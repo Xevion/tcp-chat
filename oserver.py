@@ -1,6 +1,7 @@
 import socket
 import threading
 
+import helpers
 from config import config
 
 # Connection Data
@@ -20,16 +21,10 @@ nicknames = []
 
 # Sending Messages To All Connected Clients
 def broadcast(message):
-    header = f'{len(message):<{HEADER_LENGTH}}'
-    final = header + message
+    print(f'Broadcasting: "{message}"')
+    encoded = helpers.prepare(message)
     for client in clients:
-        client.send(final.encode('ascii'))
-
-
-def send_message(client, message):
-    header = f'{len(message):<{HEADER_LENGTH}}'
-    final = header + message
-    client.send(final.encode('ascii'))
+        client.send(encoded)
 
 
 # Handling Messages From Clients
@@ -45,6 +40,7 @@ def handle(client):
             index = clients.index(client)
             clients.remove(client)
             client.close()
+
             nickname = nicknames[index]
             broadcast('{} left!'.format(nickname))
             nicknames.remove(nickname)
@@ -59,7 +55,7 @@ def receive():
         print("Connected with {}".format(str(address)))
 
         # Request And Store Nickname
-        send_message(client, 'NICK')
+        client.send(helpers.prepare('NICK'))
         length = int(client.recv(HEADER_LENGTH).decode('ascii'))
         nickname = client.recv(length).decode('ascii')
         nicknames.append(nickname)
@@ -68,8 +64,7 @@ def receive():
         # Print And Broadcast Nickname
         print("Nickname is {}".format(nickname))
         broadcast("{} joined!".format(nickname))
-
-        send_message(client, 'Connected to server!')
+        client.send(helpers.prepare('Connected to server!'))
 
         # Start Handling Thread For Client
         thread = threading.Thread(target=handle, args=(client,))
