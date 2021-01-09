@@ -5,6 +5,7 @@ import threading
 import time
 import traceback
 import uuid
+import logging
 from pprint import pprint
 
 import constants
@@ -20,6 +21,10 @@ server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 server.bind((host, port))
 server.listen()
 
+logging.basicConfig(level=logging.DEBUG,
+                    format='[%(asctime)s] [%(name)s] [%(threadName)s] %(message)s')
+logger = logging.getLogger('server')
+
 # Lists For Clients and Their Nicknames
 clients = {}
 
@@ -31,6 +36,7 @@ def broadcast_data(data):
 
 # Handling Messages From Clients
 def handle(client_id):
+    logger.info(f'Beginning handling of {client_id}')
     client = clients[client_id]['client']
     nickname = clients[client_id]['nickname']
 
@@ -38,7 +44,9 @@ def handle(client_id):
         try:
             # Broadcasting Messages
             length = int(client.recv(HEADER_LENGTH).decode('utf-8'))
+            logger.debug(f'Header received - Length {length}')
             message = json.loads(client.recv(length).decode('utf-8'))
+            logger.info(f'Data received/parsed, type: {message["type"]}')
 
             if message['type'] == constants.Types.REQUEST:
                 if message['request'] == constants.Requests.REFRESH_CONNECTIONS_LIST:
@@ -56,7 +64,7 @@ def handle(client_id):
             elif message['type'] == constants.Types.NICKNAME:
                 nickname = message['nickname']
                 if not clients[client_id]['has_nickname']:
-                    print("Nickname is {}".format(nickname))
+                    logger.info("Nickname is {}".format(nickname))
                     broadcast_data(helpers.prepare_server_message(
                         nickname='Server',
                         message=f'{nickname} joined!',
@@ -64,19 +72,13 @@ def handle(client_id):
                     ))
                     clients[client_id]['has_nickname'] = True
                 else:
-                    print(f'{clients[client_id]["nickname"]} changed their name to {nickname}')
+                    logger.info(f'{clients[client_id]["nickname"]} changed their name to {nickname}')
                 clients[client_id]['nickname'] = nickname
-
             elif message['type'] == constants.Types.MESSAGE:
-                # Echo message back to all other users
-                broadcast_data(helpers.prepare_json(
-                    {
-                        'type': constants.Types.MESSAGE,
-                        'nickname': nickname,
-                        'content': message["content"],
-                        'color': clients[client_id]['color'],
-                        'time': int(time.time())
-                    }
+                broadcast_data(helpers.prepare_server_message(
+                    nickname=nickname,
+                    message=message['content'],
+                    color=clients[client_id]['color']
                 ))
 
                 # Basic command processing
@@ -91,7 +93,7 @@ def handle(client_id):
                     ))
         except:
             traceback.print_exc()
-            print(f'Closing Client {clients[client_id]["nickname"]}')
+            logger.info(f'Client {client_id} closed. ({clients[client_id]["nickname"]})')
             client.close()
             del clients[client_id]
             broadcast_data(helpers.prepare_server_message(
@@ -107,7 +109,7 @@ def receive():
     while True:
         # Accept Connection
         client, address = server.accept()
-        print("New Client from {}".format(str(address)))
+        logger.info("New Client from {}".format(str(address)))
 
         # Request And Store Nickname
         client_id = str(uuid.uuid4())
@@ -126,7 +128,7 @@ def receive():
             'has_nickname': False,
             'color': random.choice(constants.Colors.ALL)
         }
-        pprint(clients[client_id])
+        # pprint(clients[client_id])
 
         client.send(helpers.prepare_json(
             {
@@ -136,7 +138,7 @@ def receive():
         ))
 
         # Start Handling Thread For Client
-        thread = threading.Thread(target=handle, args=(client_id,))
+        thread = threading.Thread(target=handle, args=(client_id,), name=client_id[:8])
         thread.start()
 
 
