@@ -1,6 +1,7 @@
 import socket
 import threading
 
+import constants
 import helpers
 from config import config
 
@@ -15,9 +16,9 @@ client.connect(('127.0.0.1', 55555))
 def receive():
     while True:
         try:
-            length = int(client.recv(HEADER_LENGTH).decode('ascii'))
-            message = client.recv(length).decode('ascii')
-            if message == 'NICK':
+            length = int(client.recv(HEADER_LENGTH).decode('utf-8'))
+            message = client.recv(length).decode('utf-8')
+            if message == constants.Requests.REQUEST_NICK:
                 client.send(helpers.prepare(nickname))
             else:
                 print(message)
@@ -30,7 +31,7 @@ def receive():
 # Sending Messages To Server
 def write():
     while True:
-        message = '{}: {}'.format(nickname, input(''))
+        message = input('> ')
         client.send(helpers.prepare(message))
 
 

@@ -100,7 +100,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.client.send(helpers.prepare_json(
             {
                 'type': constants.Types.MESSAGE,
-                'content': message
+                'content': message.strip()
             }
         ))
 

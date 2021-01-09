@@ -1,6 +1,11 @@
+import json
 import socket
 import threading
+import time
+import traceback
+import uuid
 
+import constants
 import helpers
 from config import config
 
@@ -15,35 +20,60 @@ server.bind((host, port))
 server.listen()
 
 # Lists For Clients and Their Nicknames
-clients = []
-nicknames = []
+clients = {}
 
 
 # Sending Messages To All Connected Clients
 def broadcast(message):
-    print(f'Broadcasting: "{message}"')
-    encoded = helpers.prepare(message)
-    for client in clients:
-        client.send(encoded)
+    print(f'"{message}"')
+    encoded = helpers.prepare_json({
+        'type': constants.Types.MESSAGE,
+        'content': message
+    })
+    for client in clients.values():
+        client['client'].send(encoded)
 
 
 # Handling Messages From Clients
-def handle(client):
+def handle(client_id):
+    client = clients[client_id]['client']
+    nickname = clients[client_id]['nickname']
+
     while True:
         try:
             # Broadcasting Messages
-            length = int(client.recv(HEADER_LENGTH).decode('ascii'))
-            message = client.recv(length).decode('ascii')
-            broadcast(message)
+            length = int(client.recv(HEADER_LENGTH).decode('utf-8'))
+            message = json.loads(client.recv(length).decode('utf-8'))
+
+            if message['type'] == constants.Types.REQUEST:
+                if message['request'] == constants.Requests.REFRESH_CONNECTIONS_LIST:
+                    client.send(helpers.prepare_json(
+                        {
+                            'type': constants.Types.USER_LIST,
+                            'users': [
+                                clients[other]['nickname'] for other in clients.keys() if other != client_id
+                            ]
+                        }
+                    ))
+            elif message['type'] == constants.Types.NICKNAME:
+
+                nickname = message['nickname']
+                if not clients[client_id]['has_nickname']:
+                    print("Nickname is {}".format(nickname))
+                    broadcast("{} joined!".format(nickname))
+                    clients[client_id]['has_nickname'] = True
+                else:
+                    print(f'{clients[client_id]["nickname"]} changed their name to {nickname}')
+                clients[client_id]['nickname'] = nickname
+
+            elif message['type'] == constants.Types.MESSAGE:
+                broadcast(f'<{nickname}>: {message["content"]}')
+
         except:
             # Removing And Closing Clients
-            index = clients.index(client)
-            clients.remove(client)
             client.close()
-
-            nickname = nicknames[index]
+            del clients[client_id]
             broadcast('{} left!'.format(nickname))
-            nicknames.remove(nickname)
             break
 
 
@@ -52,22 +82,33 @@ def receive():
     while True:
         # Accept Connection
         client, address = server.accept()
-        print("Connected with {}".format(str(address)))
+        print("New Client from {}".format(str(address)))
 
         # Request And Store Nickname
-        client.send(helpers.prepare('NICK'))
-        length = int(client.recv(HEADER_LENGTH).decode('ascii'))
-        nickname = client.recv(length).decode('ascii')
-        nicknames.append(nickname)
-        clients.append(client)
+        client_id = str(uuid.uuid4())
+        client.send(helpers.prepare_json(
+            {
+                'type': constants.Types.REQUEST,
+                'request': constants.Requests.REQUEST_NICK
+            }
+        ))
 
-        # Print And Broadcast Nickname
-        print("Nickname is {}".format(nickname))
-        broadcast("{} joined!".format(nickname))
-        client.send(helpers.prepare('Connected to server!'))
+        clients[client_id] = {
+            'client': client,
+            'nickname': client_id[:10],
+            'first_seen': int(time.time()),
+            'has_nickname': False
+        }
+
+        client.send(helpers.prepare_json(
+            {
+                'type': constants.Types.MESSAGE,
+                'content': 'Connected to server!'
+            }
+        ))
 
         # Start Handling Thread For Client
-        thread = threading.Thread(target=handle, args=(client,))
+        thread = threading.Thread(target=handle, args=(client_id,))
         thread.start()
 
 
