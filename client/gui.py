@@ -17,9 +17,10 @@ HEADER_LENGTH = 10
 
 
 class ReceiveWorker(QThread):
-    messages = pyqtSignal(str)
+    messages = pyqtSignal(str, str, str, int)
     client_list = pyqtSignal(list)
     error = pyqtSignal()
+    sent_nick = pyqtSignal()
 
     def __init__(self, client: socket.socket, nickname: str, parent=None):
         QThread.__init__(self, parent)
@@ -29,9 +30,11 @@ class ReceiveWorker(QThread):
     def run(self):
         while True:
             try:
-                length = int(self.client.recv(HEADER_LENGTH).decode('utf-8'))
-                raw = self.client.recv(length).decode('utf-8')
-                if len(raw) == 0:
+                raw_length = self.client.recv(HEADER_LENGTH).decode('utf-8')
+                if not raw_length:
+                    continue
+                raw = self.client.recv(int(raw_length)).decode('utf-8')
+                if not raw:
                     continue
                 message = json.loads(raw)
 
@@ -43,8 +46,9 @@ class ReceiveWorker(QThread):
                                 'nickname': self.nickname
                             }
                         ))
+                        self.sent_nick.emit()
                 elif message['type'] == constants.Types.MESSAGE:
-                    self.messages.emit(message['content'])
+                    self.messages.emit(message['nickname'], message['content'], message['color'], message['time'])
                 elif message['type'] == constants.Types.USER_LIST:
                     self.client_list.emit(message['users'])
             except:
@@ -61,9 +65,12 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.show()
 
         # Get Nickname
-        nicknameDialog = NicknameDialog(self)
-        nicknameDialog.exec_()
-        self.nickname = nicknameDialog.lineEdit.text()
+        while True:
+            nicknameDialog = NicknameDialog(self)
+            nicknameDialog.exec_()
+            self.nickname = nicknameDialog.lineEdit.text().strip()
+            if len(self.nickname) > 3:
+                break
 
         # Connect to server
         self.client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -78,9 +85,12 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.connectionsListTimer = QTimer()
         self.connectionsListTimer.timeout.connect(self.refreshConnectionsList)
         self.connectionsListTimer.start(1000 * 30)
-        self.refreshConnectionsList()
+        self.receiveThread.sent_nick.connect(self.refreshConnectionsList)
 
+        self.messageBox.setPlaceholderText('Type your message here...')
         self.messageBox.installEventFilter(self)
+
+        self.messages = []
 
     def eventFilter(self, obj, event):
         if event.type() == QEvent.KeyPress and obj is self.messageBox:
@@ -93,16 +103,19 @@ class MainWindow(QMainWindow, Ui_MainWindow):
                 self.messageBox.setTextCursor(cursor)
         return super().eventFilter(obj, event)
 
-    def addMessage(self, message: str) -> None:
-        self.messageHistory.append(message)
+    def addMessage(self, nickname: str, message: str, color: str, time: int) -> None:
+        self.messages.append([nickname, message, color, time])
+        self.messageHistory.append(f'&lt;<span style="color: {color}">{nickname}</span>&gt; {message}')
 
     def sendMessage(self, message: str) -> None:
-        self.client.send(helpers.prepare_json(
-            {
-                'type': constants.Types.MESSAGE,
-                'content': message.strip()
-            }
-        ))
+        message = message.strip()
+        if len(message) > 0:
+            self.client.send(helpers.prepare_json(
+                {
+                    'type': constants.Types.MESSAGE,
+                    'content': message
+                }
+            ))
 
     def refreshConnectionsList(self):
         self.client.send(helpers.prepare_json(
@@ -114,4 +127,5 @@ class MainWindow(QMainWindow, Ui_MainWindow):
 
     def updateConnectionsList(self, users):
         self.connectionsList.clear()
-        self.connectionsList.addItems(users)
+
+        self.connectionsList.addItems([user['nickname'] for user in users])

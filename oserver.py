@@ -1,18 +1,19 @@
 import json
+import random
 import socket
 import threading
 import time
 import traceback
 import uuid
+from pprint import pprint
 
 import constants
 import helpers
-from config import config
 
 # Connection Data
 host = '127.0.0.1'
 port = 55555
-HEADER_LENGTH = int(config['DEFAULT']['HeaderLength'])
+HEADER_LENGTH = 10
 
 # Starting Server
 server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -23,15 +24,9 @@ server.listen()
 clients = {}
 
 
-# Sending Messages To All Connected Clients
-def broadcast(message):
-    print(f'"{message}"')
-    encoded = helpers.prepare_json({
-        'type': constants.Types.MESSAGE,
-        'content': message
-    })
+def broadcast_data(data):
     for client in clients.values():
-        client['client'].send(encoded)
+        client['client'].send(data)
 
 
 # Handling Messages From Clients
@@ -51,29 +46,68 @@ def handle(client_id):
                         {
                             'type': constants.Types.USER_LIST,
                             'users': [
-                                clients[other]['nickname'] for other in clients.keys() if other != client_id
+                                {
+                                    'nickname': other['nickname'],
+                                    'color': other['color']
+                                } for other in clients.values()
                             ]
                         }
                     ))
             elif message['type'] == constants.Types.NICKNAME:
-
                 nickname = message['nickname']
                 if not clients[client_id]['has_nickname']:
                     print("Nickname is {}".format(nickname))
-                    broadcast("{} joined!".format(nickname))
+                    broadcast_data(helpers.prepare_json(
+                        {
+                            'type': constants.Types.MESSAGE,
+                            'nickname': 'Server',
+                            'content': f'{nickname} joined!',
+                            'color': constants.Colors.PINK,
+                            'time': int(time.time())
+                        }
+                    ))
                     clients[client_id]['has_nickname'] = True
                 else:
                     print(f'{clients[client_id]["nickname"]} changed their name to {nickname}')
                 clients[client_id]['nickname'] = nickname
 
             elif message['type'] == constants.Types.MESSAGE:
-                broadcast(f'<{nickname}>: {message["content"]}')
-
+                if message['content'] == '/reroll':
+                    color = random.choice(constants.Colors.ALL)
+                    colorname = constants.Colors.ALL_NAMES[constants.Colors.ALL.index(color)]
+                    clients[client_id]['color'] = color
+                    broadcast_data(helpers.prepare_json(
+                        {
+                            'type': constants.Types.MESSAGE,
+                            'nickname': 'Server',
+                            'content': f'Changed your color to {colorname} ({color})',
+                            'color': constants.Colors.PINK,
+                            'time': int(time.time())
+                        }
+                    ))
+                broadcast_data(helpers.prepare_json(
+                    {
+                        'type': constants.Types.MESSAGE,
+                        'nickname': nickname,
+                        'content': message["content"],
+                        'color': clients[client_id]['color'],
+                        'time': int(time.time())
+                    }
+                ))
         except:
-            # Removing And Closing Clients
+            traceback.print_exc()
+            print(f'Closing Client {clients[client_id]["nickname"]}')
             client.close()
             del clients[client_id]
-            broadcast('{} left!'.format(nickname))
+            broadcast_data(helpers.prepare_json(
+                {
+                    'type': constants.Types.MESSAGE,
+                    'nickname': 'Server',
+                    'content': f'{nickname} left!',
+                    'color': constants.Colors.PINK,
+                    'time': int(time.time())
+                }
+            ))
             break
 
 
@@ -95,14 +129,17 @@ def receive():
 
         clients[client_id] = {
             'client': client,
+            'id': client_id,
             'nickname': client_id[:10],
             'first_seen': int(time.time()),
-            'has_nickname': False
+            'has_nickname': False,
+            'color': random.choice(constants.Colors.ALL)
         }
+        pprint(clients[client_id])
 
         client.send(helpers.prepare_json(
             {
-                'type': constants.Types.MESSAGE,
+                'type': constants.Types.SERVER_MESSAGE,
                 'content': 'Connected to server!'
             }
         ))
