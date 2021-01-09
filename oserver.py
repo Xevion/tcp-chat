@@ -57,14 +57,10 @@ def handle(client_id):
                 nickname = message['nickname']
                 if not clients[client_id]['has_nickname']:
                     print("Nickname is {}".format(nickname))
-                    broadcast_data(helpers.prepare_json(
-                        {
-                            'type': constants.Types.MESSAGE,
-                            'nickname': 'Server',
-                            'content': f'{nickname} joined!',
-                            'color': constants.Colors.PINK,
-                            'time': int(time.time())
-                        }
+                    broadcast_data(helpers.prepare_server_message(
+                        nickname='Server',
+                        message=f'{nickname} joined!',
+                        color=constants.Colors.BLACK
                     ))
                     clients[client_id]['has_nickname'] = True
                 else:
@@ -72,19 +68,7 @@ def handle(client_id):
                 clients[client_id]['nickname'] = nickname
 
             elif message['type'] == constants.Types.MESSAGE:
-                if message['content'] == '/reroll':
-                    color = random.choice(constants.Colors.ALL)
-                    colorname = constants.Colors.ALL_NAMES[constants.Colors.ALL.index(color)]
-                    clients[client_id]['color'] = color
-                    broadcast_data(helpers.prepare_json(
-                        {
-                            'type': constants.Types.MESSAGE,
-                            'nickname': 'Server',
-                            'content': f'Changed your color to {colorname} ({color})',
-                            'color': constants.Colors.PINK,
-                            'time': int(time.time())
-                        }
-                    ))
+                # Echo message back to all other users
                 broadcast_data(helpers.prepare_json(
                     {
                         'type': constants.Types.MESSAGE,
@@ -94,19 +78,26 @@ def handle(client_id):
                         'time': int(time.time())
                     }
                 ))
+
+                # Basic command processing
+                if message['content'] == '/reroll':
+                    color = random.choice(constants.Colors.ALL)
+                    colorName = constants.Colors.ALL_NAMES[constants.Colors.ALL.index(color)]
+                    clients[client_id]['color'] = color
+                    broadcast_data(helpers.prepare_server_message(
+                        nickname='Server',
+                        message=f'Changed your color to {colorName} ({color})',
+                        color=constants.Colors.BLACK
+                    ))
         except:
             traceback.print_exc()
             print(f'Closing Client {clients[client_id]["nickname"]}')
             client.close()
             del clients[client_id]
-            broadcast_data(helpers.prepare_json(
-                {
-                    'type': constants.Types.MESSAGE,
-                    'nickname': 'Server',
-                    'content': f'{nickname} left!',
-                    'color': constants.Colors.PINK,
-                    'time': int(time.time())
-                }
+            broadcast_data(helpers.prepare_server_message(
+                nickname='Server',
+                message=f'{nickname} left!',
+                color=constants.Colors.BLACK
             ))
             break
 
