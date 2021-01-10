@@ -32,3 +32,8 @@ def prepare_server_message(nickname: str, message: str, color: str, msgtime: int
             'time': msgtime or int(time.time())
         }
     )
+
+
+def prepare_request(request: str) -> bytes:
+    """Helper function for creating a request message."""
+    return prepare_json({'type': constants.Types.REQUEST, 'request': request})
