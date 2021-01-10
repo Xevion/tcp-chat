@@ -17,6 +17,7 @@ logger = logging.getLogger('server')
 
 clients = []
 
+
 # Receiving / Listening Function
 def receive():
     while True:
@@ -25,8 +26,12 @@ def receive():
         logger.info(f"New connection from {address}")
 
         client = handler.Client(conn, address, clients)
+        clients.append(client)
         client.request_nickname()
 
         # Start Handling Thread For Client
         thread = threading.Thread(target=client.handle, name=client.id[:8])
         thread.start()
+
+
+receive()
