@@ -63,13 +63,14 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         super(MainWindow, self).__init__(*args, **kwargs)
         self.setupUi(self)
         self.show()
+        self.closed = False
 
         # Get Nickname
         while True:
-            nicknameDialog = NicknameDialog(self)
-            nicknameDialog.exec_()
-            self.nickname = nicknameDialog.lineEdit.text().strip()
-            if len(self.nickname) > 3:
+            self.nicknameDialog = NicknameDialog(self)
+            self.nicknameDialog.exec_()
+            self.nickname = self.nicknameDialog.lineEdit.text().strip()
+            if len(self.nickname) >= 3 or self.closed:
                 break
 
         # Connect to server
@@ -91,6 +92,12 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.messageBox.installEventFilter(self)
 
         self.messages = []
+
+    def closeEvent(self, event):
+        if self.nicknameDialog:
+            self.closed = True
+            self.nicknameDialog.close()
+        event.accept()  # let the window close
 
     def eventFilter(self, obj, event):
         if event.type() == QEvent.KeyPress and obj is self.messageBox:
