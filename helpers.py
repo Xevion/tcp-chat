@@ -22,7 +22,7 @@ def prepare_json(object) -> bytes:
     return prepare(json.dumps(object))
 
 
-def prepare_server_message(nickname: str, message: str, color: str, msgtime: int = None):
+def prepare_message(nickname: str, message: str, color: str, msgtime: int = None):
     return prepare_json(
         {
             'type': constants.Types.MESSAGE,

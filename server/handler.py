@@ -3,7 +3,6 @@ import logging
 import random
 import socket
 import time
-import traceback
 import uuid
 from typing import Any, List
 
@@ -30,6 +29,15 @@ class Client:
         """Send a request for the client's nickname information."""
         self.conn.send(helpers.prepare_request(constants.Requests.REQUEST_NICK))
 
+    def send_connections_list(self) -> None:
+        """Sends a list of connections to the server, identifying their nickname and color"""
+        self.conn.send(helpers.prepare_json(
+            {
+                'type': constants.Types.USER_LIST,
+                'users': [{'nickname': other.nickname, 'color': other.color} for other in self.all_clients]
+            }
+        ))
+
     def receive_message(self) -> Any:
         length = int(self.conn.recv(constants.HEADER_LENGTH).decode('utf-8'))
         logger.debug(f'Header received - Length {length}')
@@ -37,19 +45,28 @@ class Client:
         logger.info(f'Data received/parsed, type: {message["type"]}')
         return message
 
+    def handle_nickname(self, nickname: str) -> None:
+        if self.last_nickname_change is None:
+            logger.info("Nickname is {}".format(nickname))
+            self.broadcast_message(f'{nickname} joined!')
+            self.last_nickname_change = time.time()
+        else:
+            logger.info(f'{self.nickname} changed their name to {nickname}')
+        self.nickname = nickname
+
     def send(self, message: bytes) -> None:
         """Sends a pre-encoded message to this client."""
         self.conn.send(message)
 
     def send_message(self, message: str) -> None:
         """Sends a string message as the server to this client."""
-        self.conn.send(helpers.prepare_server_message(
+        self.conn.send(helpers.prepare_message(
             nickname='Server', message=message, color=constants.Colors.BLACK
         ))
 
     def broadcast_message(self, message: str) -> None:
         """Sends a string message to all connected clients as the Server."""
-        prepared = helpers.prepare_server_message(
+        prepared = helpers.prepare_message(
             nickname='Server', message=message, color=constants.Colors.BLACK
         )
         for client in self.all_clients:
@@ -67,32 +84,11 @@ class Client:
 
                 if data['type'] == constants.Types.REQUEST:
                     if data['request'] == constants.Requests.REFRESH_CONNECTIONS_LIST:
-                        self.conn.send(helpers.prepare_json(
-                            {
-                                'type': constants.Types.USER_LIST,
-                                'users': [
-                                    {
-                                        'nickname': other.nickname,
-                                        'color': other.color
-                                    } for other in self.all_clients
-                                ]
-                            }
-                        ))
+                        self.send_connections_list()
                 elif data['type'] == constants.Types.NICKNAME:
-                    nickname = data['nickname']
-                    if self.last_nickname_change is None:
-                        logger.info("Nickname is {}".format(nickname))
-                        self.broadcast(helpers.prepare_server_message(
-                            nickname='Server',
-                            message=f'{nickname} joined!',
-                            color=constants.Colors.BLACK
-                        ))
-                        self.last_nickname_change = time.time()
-                    else:
-                        logger.info(f'{self.nickname} changed their name to {nickname}')
-                    self.nickname = nickname
+                    self.handle_nickname(data['nickname'])
                 elif data['type'] == constants.Types.MESSAGE:
-                    self.broadcast(helpers.prepare_server_message(
+                    self.broadcast(helpers.prepare_message(
                         nickname=self.nickname,
                         message=data['content'],
                         color=self.color
@@ -103,18 +99,10 @@ class Client:
                         color = random.choice(constants.Colors.ALL)
                         colorName = constants.Colors.ALL_NAMES[constants.Colors.ALL.index(color)]
                         self.color = color
-                        self.broadcast(helpers.prepare_server_message(
-                            nickname='Server',
-                            message=f'Changed your color to {colorName} ({color})',
-                            color=constants.Colors.BLACK
-                        ))
-            except:
-                traceback.print_exc()
+                        self.broadcast_message(f'Changed your color to {colorName} ({color})')
+            except Exception as e:
+                logger.critical(e, exc_info=True)
                 logger.info(f'Client {self.id} closed. ({self.nickname})')
                 self.conn.close()
-                self.broadcast(helpers.prepare_server_message(
-                    nickname='Server',
-                    message=f'{self.nickname} left!',
-                    color=constants.Colors.BLACK
-                ))
+                self.broadcast_message(f'{self.nickname} left!')
                 break
