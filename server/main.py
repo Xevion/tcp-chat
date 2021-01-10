@@ -33,5 +33,5 @@ def receive():
         thread = threading.Thread(target=client.handle, name=client.id[:8])
         thread.start()
 
-
-receive()
+if __name__ == '__main__':
+    receive()

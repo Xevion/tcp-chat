@@ -13,5 +13,6 @@ if __name__ == "__main__":
             app.setApplicationName("TCPChat Client")
             m = MainWindow()
             app.exec_()
-        elif str(sys.argv[1]).lower() == ['server', 's', '2']:
+        elif str(sys.argv[1]).lower() in ['server', 's', '2']:
             from server import main
+            main.receive()
