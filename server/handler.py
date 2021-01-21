@@ -104,7 +104,9 @@ class Client:
 
                     command = data['content'].strip()
                     if command.startswith('/'):
-                        msg = self.command.process(data['content'][1:].strip().split())
+                        args = data['content'][1:].strip().split()
+                        args[0] = args[0].lower()  # Command name will always be perceived as lowercase
+                        msg = self.command.process(args)
                         if msg is not None:
                             self.broadcast_message(msg)
 
@@ -112,5 +114,6 @@ class Client:
                 logger.critical(e, exc_info=True)
                 logger.info(f'Client {self.id} closed. ({self.nickname})')
                 self.conn.close()
+                self.all_clients.remove(self)
                 self.broadcast_message(f'{self.nickname} left!')
                 break

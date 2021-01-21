@@ -32,7 +32,7 @@ class CommandHandler:
             aliases = []
 
         name = name or func.__name__.capitalize()
-        command_name = command_name or func.__name__.lower()
+        command_name = (command_name or func.__name__).lower()
 
         for alias in aliases:
             self.aliases[alias] = command_name
