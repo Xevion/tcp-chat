@@ -1,6 +1,6 @@
 import logging
+import multiprocessing
 import socket
-import threading
 
 from server import handler
 
@@ -21,17 +21,22 @@ clients = []
 # Receiving / Listening Function
 def receive():
     while True:
-        # Accept Connection
-        conn, address = server.accept()
-        logger.info(f"New connection from {address}")
+        try:
+            # Accept Connection
+            conn, address = server.accept()
+            logger.info(f"New connection from {address}")
 
-        client = handler.Client(conn, address, clients)
-        clients.append(client)
-        client.request_nickname()
+            client = handler.Client(conn, address, clients)
+            clients.append(client)
+            client.request_nickname()
 
-        # Start Handling Thread For Client
-        thread = threading.Thread(target=client.handle, name=client.id[:8])
-        thread.start()
+            # Start Handling Thread For Client
+            thread = multiprocessing.Process(target=client.handle, name=client.id[:8])
+            thread.start()
+        except KeyboardInterrupt:
+            logger.info('Server closed by user.')
+        except Exception as e:
+            logger.critical(e, exc_info=e)
 
 
 if __name__ == '__main__':
