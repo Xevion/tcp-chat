@@ -42,7 +42,7 @@ class Client:
         self.conn.send(helpers.prepare_json(
             {
                 'type': constants.Types.USER_LIST,
-                'users': [{'nickname': other.nickname, 'color': other.color} for other in self.all_clients]
+                'users': [{'nickname': other.nickname, 'color': other.color.hex} for other in self.all_clients]
             }
         ))
 
@@ -69,13 +69,13 @@ class Client:
     def send_message(self, message: str) -> None:
         """Sends a string message as the server to this client."""
         self.conn.send(helpers.prepare_message(
-            nickname='Server', message=message, color=constants.Colors.BLACK
+            nickname='Server', message=message, color=constants.Colors.BLACK.hex
         ))
 
     def broadcast_message(self, message: str) -> None:
         """Sends a string message to all connected clients as the Server."""
         prepared = helpers.prepare_message(
-            nickname='Server', message=message, color=constants.Colors.BLACK
+            nickname='Server', message=message, color=constants.Colors.BLACK.hex
         )
         for client in self.all_clients:
             client.send(prepared)
@@ -99,7 +99,7 @@ class Client:
                     self.broadcast(helpers.prepare_message(
                         nickname=self.nickname,
                         message=data['content'],
-                        color=self.color
+                        color=self.color.hex
                     ))
 
                     command = data['content'].strip()

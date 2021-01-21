@@ -70,14 +70,20 @@ class CommandHandler:
                 logger.error(f'Could not process client {self.client.nickname}\'s command request.', exc_info=e)
                 return 'A fatal error occurred while trying to process this command.'
 
-    def reroll(self) -> str:
+    def reroll(self, minimum_contrast: float = 4.65) -> str:
         """
         Randomly change the client's color to a different color.
         """
-        newColor = random.choice(constants.Colors.ALL)
-        newColorName = constants.Colors.ALL_NAMES[constants.Colors.ALL.index(newColor)]
+        i = 0
+        newColor = self.client.color
+        choices = constants.Colors.has_contrast(float(minimum_contrast))
+
+        while i < 50 and newColor == self.client.color:
+            newColor = random.choice(choices)
+
         self.client.color = newColor
-        return f'Changed your color to {newColorName} ({newColor})'
+        contrast = round(constants.Colors.WHITE.contrast_ratio(newColor), 1)
+        return f'Changed your color to {newColor.name} ({newColor.hex}/{contrast})'
 
     def help(self, command: str) -> Optional[str]:
         """
