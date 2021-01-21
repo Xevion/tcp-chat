@@ -108,6 +108,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
                 cursor = self.messageBox.textCursor()
                 cursor.setPosition(0)
                 self.messageBox.setTextCursor(cursor)
+                return True
         return super().eventFilter(obj, event)
 
     def addMessage(self, nickname: str, message: str, color: str, time: int) -> None:

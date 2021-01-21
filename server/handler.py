@@ -26,7 +26,7 @@ class Client:
 
         self.id = str(uuid.uuid4())
         self.nickname = self.id[:8]
-        self.color = random.choice(constants.Colors.ALL)
+        self.color = random.choice(constants.Colors.has_contrast(float(constants.MINIMUM_CONTRAST)))
 
         self.command = CommandHandler(self)
         self.first_seen = time.time()

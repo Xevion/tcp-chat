@@ -3,6 +3,7 @@ from typing import List
 import webcolors
 
 HEADER_LENGTH = 10
+MINIMUM_CONTRAST = 4.65
 
 
 class Types:

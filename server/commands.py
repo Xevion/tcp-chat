@@ -70,7 +70,7 @@ class CommandHandler:
                 logger.error(f'Could not process client {self.client.nickname}\'s command request.', exc_info=e)
                 return 'A fatal error occurred while trying to process this command.'
 
-    def reroll(self, minimum_contrast: float = 4.65) -> str:
+    def reroll(self, minimum_contrast: float = constants.MINIMUM_CONTRAST) -> str:
         """
         Randomly change the client's color to a different color.
         """
