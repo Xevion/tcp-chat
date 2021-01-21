@@ -11,8 +11,6 @@ server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 server.bind((host, port))
 server.listen()
 
-logging.basicConfig(level=logging.DEBUG,
-                    format='[%(asctime)s] [%(levelname)s] [%(threadName)s] %(message)s')
 logger = logging.getLogger('server')
 
 clients = []
@@ -40,4 +38,7 @@ def receive():
 
 
 if __name__ == '__main__':
+    from server import db
+
     receive()
+    db.conn.close()

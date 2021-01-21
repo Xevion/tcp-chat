@@ -8,6 +8,8 @@ from typing import Any, List
 
 import constants
 import helpers
+# noinspection PyUnresolvedReferences
+from server import db
 from server.commands import CommandHandler
 
 logger = logging.getLogger('handler')
@@ -113,6 +115,10 @@ class Client(BaseClient):
                         color=self.color.hex
                     ))
 
+                    # Record the message in the DB.
+                    db.add_message(self.nickname, self.id, self.color.hex, data['content'], int(time.time()))
+
+                    # Process commands
                     command = data['content'].strip()
                     if command.startswith('/'):
                         args = data['content'][1:].strip().split()

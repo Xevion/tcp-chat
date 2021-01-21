@@ -1,9 +1,13 @@
 from typing import List
 
+import os
 import webcolors
+
+__BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
 HEADER_LENGTH = 10
 MINIMUM_CONTRAST = 4.65
+DATABASE = os.path.join(__BASE_DIR, 'messages.db')
 
 
 class Types:
