@@ -8,11 +8,18 @@ from typing import Any, List
 
 import constants
 import helpers
+from server.commands import CommandHandler
 
 logger = logging.getLogger('handler')
 
 
 class Client:
+    """
+    A class dedicating to handling interactions between the server and the client.
+
+    Client.run() should be ran in a thread alongside the other clients.
+    """
+
     def __init__(self, conn: socket.socket, address: Any, all_clients: List['Client']):
         self.conn, self.address = conn, address
         self.all_clients = all_clients
@@ -21,6 +28,7 @@ class Client:
         self.nickname = self.id[:8]
         self.color = random.choice(constants.Colors.ALL)
 
+        self.command = CommandHandler(self)
         self.first_seen = time.time()
         self.last_nickname_change = None
         self.last_message_sent = None
@@ -94,12 +102,12 @@ class Client:
                         color=self.color
                     ))
 
-                    # Basic command processing
-                    if data['content'] == '/reroll':
-                        color = random.choice(constants.Colors.ALL)
-                        colorName = constants.Colors.ALL_NAMES[constants.Colors.ALL.index(color)]
-                        self.color = color
-                        self.broadcast_message(f'Changed your color to {colorName} ({color})')
+                    command = data['content'].strip()
+                    if command.startswith('/'):
+                        msg = self.command.process(data['content'][1:].strip().split())
+                        if msg is not None:
+                            self.broadcast_message(msg)
+
             except Exception as e:
                 logger.critical(e, exc_info=True)
                 logger.info(f'Client {self.id} closed. ({self.nickname})')
