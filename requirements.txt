@@ -1,1 +1,2 @@
 pyqt5-tools~=5.15
+webcolors~=1.11.1
