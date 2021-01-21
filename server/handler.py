@@ -13,7 +13,42 @@ from server.commands import CommandHandler
 logger = logging.getLogger('handler')
 
 
-class Client:
+class BaseClient(object):
+    """A simple base class for the client containing basic client communication methods."""
+
+    def __init__(self, conn: socket.socket, all_clients: List['Client'], address) -> None:
+        self.conn, self.all_clients, self.address = conn, all_clients, address
+
+    def send(self, message: bytes) -> None:
+        """Sends a pre-encoded message to this client."""
+        self.conn.send(message)
+
+    def send_message(self, message: str) -> None:
+        """Sends a string message as the server to this client."""
+        # db.add_message('Server', 'server', constants.Colors.BLACK.hex, message, int(time.time()))
+        self.conn.send(helpers.prepare_message(
+            nickname='Server', message=message, color=constants.Colors.BLACK.hex
+        ))
+
+    def broadcast_message(self, message: str) -> None:
+        """Sends a string message to all connected clients as the Server."""
+        db.add_message('Server', 'server', constants.Colors.BLACK.hex, message, int(time.time()))
+        prepared = helpers.prepare_message(
+            nickname='Server', message=message, color=constants.Colors.BLACK.hex
+        )
+        for client in self.all_clients:
+            client.send(prepared)
+
+    def broadcast(self, message: bytes) -> None:
+        """Sends a pre-encoded message to all connected clients"""
+        for client in self.all_clients:
+            client.send(message)
+
+    def __repr__(self) -> str:
+        return f'BaseClient({self.address})'
+
+
+class Client(BaseClient):
     """
     A class dedicating to handling interactions between the server and the client.
 
@@ -21,12 +56,11 @@ class Client:
     """
 
     def __init__(self, conn: socket.socket, address: Any, all_clients: List['Client']):
-        self.conn, self.address = conn, address
-        self.all_clients = all_clients
+        super().__init__(conn, all_clients, address)
 
         self.id = str(uuid.uuid4())
         self.nickname = self.id[:8]
-        self.color = random.choice(constants.Colors.has_contrast(float(constants.MINIMUM_CONTRAST)))
+        self.color: constants.Color = random.choice(constants.Colors.has_contrast(float(constants.MINIMUM_CONTRAST)))
 
         self.command = CommandHandler(self)
         self.first_seen = time.time()
@@ -46,12 +80,12 @@ class Client:
             }
         ))
 
-    def receive_message(self) -> Any:
+    def receive(self) -> Any:
         length = int(self.conn.recv(constants.HEADER_LENGTH).decode('utf-8'))
         logger.debug(f'Header received - Length {length}')
-        message = json.loads(self.conn.recv(length).decode('utf-8'))
-        logger.info(f'Data received/parsed, type: {message["type"]}')
-        return message
+        data = json.loads(self.conn.recv(length).decode('utf-8'))
+        logger.info(f'Data received/parsed, type: {data["type"]}')
+        return data
 
     def handle_nickname(self, nickname: str) -> None:
         if self.last_nickname_change is None:
@@ -62,33 +96,10 @@ class Client:
             logger.info(f'{self.nickname} changed their name to {nickname}')
         self.nickname = nickname
 
-    def send(self, message: bytes) -> None:
-        """Sends a pre-encoded message to this client."""
-        self.conn.send(message)
-
-    def send_message(self, message: str) -> None:
-        """Sends a string message as the server to this client."""
-        self.conn.send(helpers.prepare_message(
-            nickname='Server', message=message, color=constants.Colors.BLACK.hex
-        ))
-
-    def broadcast_message(self, message: str) -> None:
-        """Sends a string message to all connected clients as the Server."""
-        prepared = helpers.prepare_message(
-            nickname='Server', message=message, color=constants.Colors.BLACK.hex
-        )
-        for client in self.all_clients:
-            client.send(prepared)
-
-    def broadcast(self, message: bytes) -> None:
-        """Sends a pre-encoded message to all connected clients"""
-        for client in self.all_clients:
-            client.send(message)
-
     def handle(self) -> None:
         while True:
             try:
-                data = self.receive_message()
+                data = self.receive()
 
                 if data['type'] == constants.Types.REQUEST:
                     if data['request'] == constants.Requests.REFRESH_CONNECTIONS_LIST:
