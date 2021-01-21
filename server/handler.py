@@ -29,14 +29,16 @@ class BaseClient(object):
         """Sends a string message as the server to this client."""
         # db.add_message('Server', 'server', constants.Colors.BLACK.hex, message, int(time.time()))
         self.conn.send(helpers.prepare_message(
-            nickname='Server', message=message, color=constants.Colors.BLACK.hex
+            nickname='Server', message=message, color=constants.Colors.BLACK.hex, message_id=-1
         ))
 
     def broadcast_message(self, message: str) -> None:
         """Sends a string message to all connected clients as the Server."""
-        db.add_message('Server', 'server', constants.Colors.BLACK.hex, message, int(time.time()))
+        timestamp = int(time.time())
+        message_id = db.add_message('Server', 'server', constants.Colors.BLACK.hex, message, timestamp)
         prepared = helpers.prepare_message(
-            nickname='Server', message=message, color=constants.Colors.BLACK.hex
+            nickname='Server', message=message, color=constants.Colors.BLACK.hex, message_id=message_id,
+            timestamp=timestamp
         )
         for client in self.all_clients:
             client.send(prepared)
@@ -82,6 +84,25 @@ class Client(BaseClient):
             }
         ))
 
+    def send_message_history(self, limit: int, time_limit: int) -> None:
+        limit = min(100, max(0, limit))
+        time_limit = min(60 * 30, max(0, time_limit))
+        min_time = int(time.time()) - time_limit
+
+        cur = db.conn.cursor()
+        try:
+            cur.execute('''SELECT id, nickname, color, message, timestamp
+                            FROM message
+                            WHERE timestamp >= ?
+                            ORDER BY timestamp
+                            LIMIT ?''',
+                        [min_time, limit])
+
+            messages = cur.fetchall()
+            self.send(helpers.prepare_message_history(messages))
+        finally:
+            cur.close()
+
     def receive(self) -> Any:
         length = int(self.conn.recv(constants.HEADER_LENGTH).decode('utf-8'))
         logger.debug(f'Header received - Length {length}')
@@ -106,17 +127,24 @@ class Client(BaseClient):
                 if data['type'] == constants.Types.REQUEST:
                     if data['request'] == constants.Requests.REFRESH_CONNECTIONS_LIST:
                         self.send_connections_list()
+                    if data['request'] == constants.Requests.GET_MESSAGE_HISTORY:
+                        self.send_message_history(
+                            limit=data.get('limit', 50), time_limit=data.get('time_limit', 60 * 30)
+                        )
+
                 elif data['type'] == constants.Types.NICKNAME:
                     self.handle_nickname(data['nickname'])
                 elif data['type'] == constants.Types.MESSAGE:
+                    # Record the message in the DB.
+                    message_id = db.add_message(self.nickname, self.id, self.color.hex, data['content'],
+                                                int(time.time()))
+
                     self.broadcast(helpers.prepare_message(
                         nickname=self.nickname,
                         message=data['content'],
-                        color=self.color.hex
+                        color=self.color.hex,
+                        message_id=message_id
                     ))
-
-                    # Record the message in the DB.
-                    db.add_message(self.nickname, self.id, self.color.hex, data['content'], int(time.time()))
 
                     # Process commands
                     command = data['content'].strip()

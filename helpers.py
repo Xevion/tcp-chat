@@ -1,5 +1,6 @@
 import json
 import time
+from typing import List, Tuple
 
 import constants
 
@@ -22,14 +23,33 @@ def prepare_json(object) -> bytes:
     return prepare(json.dumps(object))
 
 
-def prepare_message(nickname: str, message: str, color: str, msgtime: int = None):
+def prepare_message(nickname: str, message: str, color: str, message_id: int, timestamp: int = None) -> bytes:
     return prepare_json(
         {
             'type': constants.Types.MESSAGE,
             'nickname': nickname,
             'content': message,
             'color': color,
-            'time': msgtime or int(time.time())
+            'time': timestamp or int(time.time()),
+            'id': message_id,
+        }
+    )
+
+
+def prepare_message_history(messages: List[Tuple[int, str, str, str, int]]) -> bytes:
+    return prepare_json(
+        {
+            'type': constants.Types.MESSAGE_HISTORY,
+            'messages': [
+                {
+                    'type': constants.Types.MESSAGE,
+                    'nickname': nickname,
+                    'content': message,
+                    'color': color,
+                    'time': timestamp,
+                    'id': message_id
+                } for message_id, nickname, color, message, timestamp in messages
+            ]
         }
     )
 

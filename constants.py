@@ -16,11 +16,11 @@ class Types:
     A message could be a request, a posting of information, a message etc.
     The Types class provides a universal naming for the types of messages that will be exchanged.
     """
-    SERVER_MESSAGE = 'SERVER_MESSAGE'
     REQUEST = 'REQUEST'
+    MESSAGE = 'MESSAGE'
     NICKNAME = 'NICKNAME'
     USER_LIST = 'USER_LIST'
-    MESSAGE = 'MESSAGE'
+    MESSAGE_HISTORY = 'MESSAGE_HISTORY'
 
 
 class Requests:
@@ -30,7 +30,7 @@ class Requests:
     """
     REQUEST_NICK = 'REQUEST_NICK'  # Send the server the client's nickname
     REFRESH_CONNECTIONS_LIST = 'REFRESH_CLIENT_LIST'  # Send the client all connections to the server and their information
-    GET_HISTORY = 'GET_HISTORY'  # Send a short history of the chat to the client
+    GET_MESSAGE_HISTORY = 'GET_MESSAGE_HISTORY'  # Send the client a detailed list of all messages sent up to a certain point.
 
 
 class Color():
