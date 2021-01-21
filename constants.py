@@ -1,12 +1,12 @@
 HEADER_LENGTH = 10
 
-class Requests:
-    REQUEST_NICK = 'REQUEST_NICK'
-    REFRESH_CONNECTIONS_LIST = 'REFRESH_CLIENT_LIST'
-    GET_HISTORY = 'GET_HISTORY'
-
 
 class Types:
+    """
+    Types describe the types of messages sent between the client and server.
+    A message could be a request, a posting of information, a message etc.
+    The Types class provides a universal naming for the types of messages that will be exchanged.
+    """
     SERVER_MESSAGE = 'SERVER_MESSAGE'
     REQUEST = 'REQUEST'
     NICKNAME = 'NICKNAME'
@@ -14,50 +14,20 @@ class Types:
     MESSAGE = 'MESSAGE'
 
 
+class Requests:
+    """
+    Requests describe a request between the server and client to send a specific type of information.
+    The Requests class provides a universal naming for the types of requests that can be made and received.
+    """
+    REQUEST_NICK = 'REQUEST_NICK'  # Send the server the client's nickname
+    REFRESH_CONNECTIONS_LIST = 'REFRESH_CLIENT_LIST'  # Send the client all connections to the server and their information
+    GET_HISTORY = 'GET_HISTORY'  # Send a short history of the chat to the client
+
+
 class Colors:
-    AQUA = "#00ffff"
-    AZURE = "#f0ffff"
-    BEIGE = "#f5f5dc"
-    BLACK = "#000000"
-    BLUE = "#0000ff"
-    BROWN = "#a52a2a"
-    CYAN = "#00ffff"
-    DARKBLUE = "#00008b"
-    DARKCYAN = "#008b8b"
-    DARKGREY = "#a9a9a9"
-    DARKGREEN = "#006400"
-    DARKKHAKI = "#bdb76b"
-    DARKMAGENTA = "#8b008b"
-    DARKOLIVEGREEN = "#556b2f"
-    DARKORANGE = "#ff8c00"
-    DARKORCHID = "#9932cc"
-    DARKRED = "#8b0000"
-    DARKSALMON = "#e9967a"
-    DARKVIOLET = "#9400d3"
-    FUCHSIA = "#ff00ff"
-    GOLD = "#ffd700"
-    GREEN = "#008000"
-    INDIGO = "#4b0082"
-    KHAKI = "#f0e68c"
-    LIGHTBLUE = "#add8e6"
-    LIGHTCYAN = "#e0ffff"
-    LIGHTGREEN = "#90ee90"
-    LIGHTGREY = "#d3d3d3"
-    LIGHTPINK = "#ffb6c1"
-    LIGHTYELLOW = "#ffffe0"
-    LIME = "#00ff00"
-    MAGENTA = "#ff00ff"
-    MAROON = "#800000"
-    NAVY = "#000080"
-    OLIVE = "#808000"
-    ORANGE = "#ffa500"
-    PINK = "#ffc0cb"
-    PURPLE = "#800080"
-    VIOLET = "#800080"
-    RED = "#ff0000"
-    SILVER = "#c0c0c0"
-    WHITE = "#ffffff"
-    YELLOW = "#ffff00"
+    """
+    Stores hexadecimal color codes of popular colors, with names.
+    """
 
     ALL_NAMES = ['Aqua', 'Azure', 'Beige', 'Black', 'Blue', 'Brown', 'Cyan', 'Dark Blue', 'Dark Cyan', 'Dark Grey',
                  'Dark Green', 'Dark Khaki', 'Dark Magenta', 'Dark Olive Green', 'Dark Orange', ' Dark Orchid', 'Dark Red', 'Dark Salmon',
