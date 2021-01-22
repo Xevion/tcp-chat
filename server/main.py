@@ -1,6 +1,6 @@
 import logging
-import multiprocessing
 import socket
+import threading
 
 from server import handler
 
@@ -29,7 +29,7 @@ def receive():
             client.request_nickname()
 
             # Start Handling Thread For Client
-            thread = multiprocessing.Process(target=client.handle, name=client.id[:8])
+            thread = threading.Thread(target=client.handle, name=client.id[:8])
             thread.start()
         except KeyboardInterrupt:
             logger.info('Server closed by user.')
@@ -38,7 +38,4 @@ def receive():
 
 
 if __name__ == '__main__':
-    from server import db
-
     receive()
-    db.conn.close()

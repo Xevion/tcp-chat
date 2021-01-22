@@ -1,52 +1,75 @@
 import logging
 import sqlite3
+import threading
 from typing import List
 
 import constants
 
 logger = logging.getLogger('database')
-
-conn = sqlite3.connect(constants.DATABASE)
-logger.debug(f"Connected to '{constants.DATABASE}'")
-
-logger.debug("Constructing 'message' table.")
-conn.execute('''CREATE TABLE IF NOT EXISTS message
-            (id INTEGER PRIMARY KEY,
-            nickname TEXT NOT NULL,
-            connection_hash TEXT NOT NULL,
-            color TEXT DEFAULT '#000000',
-            message TEXT DEFAULT '',
-            timestamp INTEGER NOT NULL)''')
-conn.commit()
+lock = threading.Lock()
 
 
-def add_message(nickname: str, user_hash: str, color: str, message: str, timestamp: int) -> int:
-    """
-    Insert a message into the database. Returns the message ID.
+class Database(object):
+    def __init__(self):
+        logger.debug(f"Connected to '{constants.DATABASE}'")
+        self.conn = sqlite3.connect(constants.DATABASE)
+        self.__isClosed = False
 
-    :param nickname: A non-unique identifier for the user.
-    :param user_hash: A unique hash (usually) denoting the sender's identity.
-    :param color: The color of the user who sent the message.
-    :param message: The string content of the message echoed to all clients.
-    :param timestamp: The epoch time of the sent message.
-    :return: The unique integer primary key chosen for the message, i.e. it's ID.
-    """
-    cur = conn.cursor()
-    try:
-        cur.execute('''INSERT INTO message (nickname, connection_hash, color, message, timestamp)
-                    VALUES (?, ?, ?, ?, ?)''', [nickname, user_hash, color, message, timestamp])
-        conn.commit()
-        logger.debug(f'Message {cur.lastrowid} recorded.')
-        return cur.lastrowid
-    finally:
-        cur.close()
+    @property
+    def is_closed(self) -> bool:
+        return self.__isClosed
 
+    def close(self) -> None:
+        if self.__isClosed:
+            logger.warning(f'Database connection is already closed.', exc_info=True)
+        else:
+            self.conn.close()
+            self.__isClosed = True
 
-def get_messages(columns: List[str] = None):
-    cur = conn.cursor()
-    try:
-        if columns is None:
-            cur.execute('''SELECT * FROM message''')
-            return cur.fetchall()
-    finally:
-        cur.close()
+    def construct(self):
+        with lock:
+            cur = self.conn.cursor()
+            try:
+                cur.execute('''SELECT name FROM sqlite_master WHERE type='table' AND name='?';''', 'message')
+                if cur.fetchone() is None:
+                    self.conn.execute('''CREATE TABLE message
+                                        (id INTEGER PRIMARY KEY,
+                                        nickname TEXT NOT NULL,
+                                        connection_hash TEXT NOT NULL,
+                                        color TEXT DEFAULT '#000000',
+                                        message TEXT DEFAULT '',
+                                        timestamp INTEGER NOT NULL)''')
+                    logger.debug("'message' table created.")
+            finally:
+                cur.close()
+
+    def add_message(self, nickname: str, user_hash: str, color: str, message: str, timestamp: int) -> int:
+        """
+        Insert a message into the database. Returns the message ID.
+
+        :param nickname: A non-unique identifier for the user.
+        :param user_hash: A unique hash (usually) denoting the sender's identity.
+        :param color: The color of the user who sent the message.
+        :param message: The string content of the message echoed to all clients.
+        :param timestamp: The epoch time of the sent message.
+        :return: The unique integer primary key chosen for the message, i.e. it's ID.
+        """
+        with lock:
+            cur = self.conn.cursor()
+            try:
+                cur.execute('''INSERT INTO message (nickname, connection_hash, color, message, timestamp)
+                            VALUES (?, ?, ?, ?, ?)''', [nickname, user_hash, color, message, timestamp])
+                logger.debug(f'Message {cur.lastrowid} recorded.')
+                return cur.lastrowid
+            finally:
+                cur.close()
+
+    def get_messages(self, columns: List[str] = None):
+        with lock:
+            cur = self.conn.cursor()
+            try:
+                if columns is None:
+                    cur.execute('''SELECT * FROM message''')
+                    return cur.fetchall()
+            finally:
+                cur.close()

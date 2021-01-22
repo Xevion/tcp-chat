@@ -11,6 +11,7 @@ import helpers
 # noinspection PyUnresolvedReferences
 from server import db
 from server.commands import CommandHandler
+from server.db import Database
 
 logger = logging.getLogger('handler')
 
@@ -20,6 +21,12 @@ class BaseClient(object):
 
     def __init__(self, conn: socket.socket, all_clients: List['Client'], address) -> None:
         self.conn, self.all_clients, self.address = conn, all_clients, address
+        self.db: Optional[Database] = None
+
+    def connect_database(self):
+        if self.db is None:
+            logger.debug('Connecting client to database.')
+            self.db = Database()
 
     def send(self, message: bytes) -> None:
         """Sends a pre-encoded message to this client."""
@@ -35,12 +42,13 @@ class BaseClient(object):
     def broadcast_message(self, message: str) -> None:
         """Sends a string message to all connected clients as the Server."""
         timestamp = int(time.time())
-        message_id = db.add_message('Server', 'server', constants.Colors.BLACK.hex, message, timestamp)
+        message_id = self.db.add_message('Server', 'server', constants.Colors.BLACK.hex, message, timestamp)
         prepared = helpers.prepare_message(
             nickname='Server', message=message, color=constants.Colors.BLACK.hex, message_id=message_id,
             timestamp=timestamp
         )
         for client in self.all_clients:
+            print(f'Sending a message to {client.nickname}')
             client.send(prepared)
 
     def broadcast(self, message: bytes) -> None:
@@ -71,6 +79,16 @@ class Client(BaseClient):
         self.last_nickname_change = None
         self.last_message_sent = None
 
+    def __repr__(self) -> str:
+        if self.last_nickname_change is None:
+            return f'Client({self.id[:8]})'
+        return f'Client({self.nickname}, {self.id[:8]})'
+
+    def connect_database(self) -> None:
+        if self.db is None:
+            logger.debug(f'Connecting Client({self.id[:8]}) to the database.')
+            self.db = Database()
+
     def request_nickname(self) -> None:
         """Send a request for the client's nickname information."""
         self.conn.send(helpers.prepare_request(constants.Requests.REQUEST_NICK))
@@ -89,19 +107,20 @@ class Client(BaseClient):
         time_limit = min(60 * 30, max(0, time_limit))
         min_time = int(time.time()) - time_limit
 
-        cur = db.conn.cursor()
-        try:
-            cur.execute('''SELECT id, nickname, color, message, timestamp
-                            FROM message
-                            WHERE timestamp >= ?
-                            ORDER BY timestamp
-                            LIMIT ?''',
-                        [min_time, limit])
+        with db.lock:
+            cur = self.db.conn.cursor()
+            try:
+                cur.execute('''SELECT id, nickname, color, message, timestamp
+                                FROM message
+                                WHERE timestamp >= ?
+                                ORDER BY timestamp
+                                LIMIT ?''',
+                            [min_time, limit])
 
-            messages = cur.fetchall()
-            self.send(helpers.prepare_message_history(messages))
-        finally:
-            cur.close()
+                messages = cur.fetchall()
+                self.send(helpers.prepare_message_history(messages))
+            finally:
+                cur.close()
 
     def receive(self) -> Any:
         length = int(self.conn.recv(constants.HEADER_LENGTH).decode('utf-8'))
@@ -119,7 +138,15 @@ class Client(BaseClient):
             logger.info(f'{self.nickname} changed their name to {nickname}')
         self.nickname = nickname
 
+    def close(self) -> None:
+        logger.info(f'Client {self.id} closed. ({self.nickname})')
+        self.conn.close()  # Close socket connection
+        self.all_clients.remove(self)  # Remove the user from the global client list
+        self.broadcast_message(f'{self.nickname} left!')  # Now we can broadcast it's exit message
+        self.db.conn.close()  # Close database connection
+
     def handle(self) -> None:
+        self.connect_database()
         while True:
             try:
                 data = self.receive()
@@ -136,8 +163,8 @@ class Client(BaseClient):
                     self.handle_nickname(data['nickname'])
                 elif data['type'] == constants.Types.MESSAGE:
                     # Record the message in the DB.
-                    message_id = db.add_message(self.nickname, self.id, self.color.hex, data['content'],
-                                                int(time.time()))
+                    message_id = self.db.add_message(self.nickname, self.id, self.color.hex, data['content'],
+                                                     int(time.time()))
 
                     self.broadcast(helpers.prepare_message(
                         nickname=self.nickname,
@@ -154,11 +181,16 @@ class Client(BaseClient):
                         msg = self.command.process(args)
                         if msg is not None:
                             self.broadcast_message(msg)
-
+            except DataReceptionException as e:
+                logger.critical(e)
+                logger.warning('Aborting connection to the client.')
+                self.close()
+                break
+            except ConnectionResetError:
+                logger.critical('Lost connection to the client. Exiting.')
+                self.close()
+                break
             except Exception as e:
                 logger.critical(e, exc_info=True)
-                logger.info(f'Client {self.id} closed. ({self.nickname})')
-                self.conn.close()
-                self.all_clients.remove(self)
-                self.broadcast_message(f'{self.nickname} left!')
+                self.close()
                 break
