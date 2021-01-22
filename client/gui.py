@@ -1,15 +1,17 @@
-import json
 import logging
 import socket
-import traceback
+from pprint import pprint
 
-from PyQt5.QtCore import QThread, pyqtSignal, Qt, QEvent, QTimer
+from PyQt5.QtCore import Qt, QEvent, QTimer
 from PyQt5.QtWidgets import QMainWindow
+
+from sortedcontainers import SortedList
 
 import constants
 import helpers
 from client.MainWindow import Ui_MainWindow
 from client.dialog import NicknameDialog
+from client.worker import ReceiveWorker
 
 IP = '127.0.0.1'
 PORT = 55555
@@ -17,87 +19,6 @@ PORT = 55555
 logging.basicConfig(level=logging.DEBUG,
                     format='[%(asctime)s] [%(levelname)s] [%(threadName)s] %(message)s')
 logger = logging.getLogger('gui')
-
-HEADER_LENGTH = 10
-
-
-class ReceiveWorker(QThread):
-    messages = pyqtSignal(dict)
-    client_list = pyqtSignal(list)
-    error = pyqtSignal()
-    sent_nick = pyqtSignal()
-    logs = pyqtSignal(dict)
-
-    def __init__(self, client: socket.socket, nickname: str, parent=None):
-        QThread.__init__(self, parent)
-        self.client = client
-        self.nickname = nickname
-        self.__isRunning = True
-
-    def stop(self) -> None:
-        self.__isRunning = False
-
-    def __extract_message(self, data) -> dict:
-        return {
-            'nickname': data['nickname'],
-            'message': data['content'],
-            'color': data['color'],
-            'time': data['time'],
-            'id': data['id']
-        }
-
-    def log(self, message: str, level: int = logging.INFO, error: Exception = None):
-        """Send a log message out from this QThread to the MainThread"""
-        self.logs.emit(
-            {
-                'message': message,
-                'level': level,
-                'error': error
-            }
-        )
-
-    def run(self):
-        try:
-            while self.__isRunning:
-                try:
-                    raw_length = self.client.recv(HEADER_LENGTH).decode('utf-8')
-                    if not raw_length:
-                        continue
-                    raw = self.client.recv(int(raw_length)).decode('utf-8')
-                    if not raw:
-                        continue
-                    message = json.loads(raw)
-
-                    if message['type'] == constants.Types.REQUEST:
-                        self.log(f'Data[{int(raw_length)}] received, {message["type"]}/{message["request"]}.', level=logging.DEBUG)
-                    else:
-                        self.log(f'Data[{int(raw_length)}] received, {message["type"]}.', level=logging.DEBUG)
-
-
-                    if message['type'] == constants.Types.REQUEST:
-                        if message['request'] == constants.Requests.REQUEST_NICK:
-                            self.client.send(helpers.prepare_json(
-                                {
-                                    'type': constants.Types.NICKNAME,
-                                    'nickname': self.nickname
-                                }
-                            ))
-                            self.sent_nick.emit()
-                    elif message['type'] == constants.Types.MESSAGE:
-                        self.messages.emit(self.__extract_message(message))
-                    elif message['type'] == constants.Types.USER_LIST:
-                        self.client_list.emit(message['users'])
-                    elif message['type'] == constants.Types.MESSAGE_HISTORY:
-                        for submessage in message['messages']:
-                            self.messages.emit(self.__extract_message(submessage))
-
-                except Exception as e:
-                    self.log(str(e), level=logging.CRITICAL, error=e)
-                    self.error.emit()
-                    break
-        finally:
-            self.log('Closing socket.', level=logging.INFO)
-            self.client.close()
 
 
 class MainWindow(QMainWindow, Ui_MainWindow):
@@ -137,7 +58,9 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.messageBox.setPlaceholderText('Type your message here...')
         self.messageBox.installEventFilter(self)
 
-        self.messages = []
+        self.messages = SortedList(key=lambda message: message['time'])
+        self.added_messages = []
+        self.max_message_id = -1
 
     def log(self, log_data: dict) -> None:
         logger.log(level=log_data['level'], msg=log_data['message'], exc_info=log_data['error'])
@@ -170,15 +93,40 @@ class MainWindow(QMainWindow, Ui_MainWindow):
                 return True
         return super().eventFilter(obj, event)
 
+    def refresh_messages(self) -> None:
+        """Completely refresh the chat box text."""
+        min_time = min(map(lambda msg: msg['time'], self.messages))
+
+        scrollbar = self.messageHistory.verticalScrollBar()
+        lastPosition = scrollbar.value()
+        atMaximum = lastPosition == scrollbar.maximum()
+
+        self.messageHistory.setText('<br>'.join(
+            msg['compiled'] for msg in self.messages
+        ))
+
+        scrollbar.setValue(scrollbar.maximum() if atMaximum else lastPosition)
+
     def addMessage(self, message: dict) -> None:
-        self.messages.append(message)
-        self.messageHistory.append(
-            f'&lt;<span style="color: {message["color"]}">{message["nickname"]}</span>&gt; {message["message"]}')
+        message_id = message['id']
+        if message_id not in self.added_messages:
+            message['compiled'] = helpers.formatted_message(message)
+
+            if 0 <= message_id < self.max_message_id:
+                logger.info('Refreshing entire chatbox...')
+                self.max_message_id = message_id
+                self.messages.add(message)
+                return
+            else:
+                self.max_message_id = message_id
+                self.added_messages.append(message_id)
+                self.messages.add(message)
+
+            self.refresh_messages()
 
     def sendMessage(self, message: str) -> None:
         message = message.strip()
         if len(message) > 0:
-            logger.info(f'Sending message of length {len(message)}')
             self.client.send(helpers.prepare_json(
                 {
                     'type': constants.Types.MESSAGE,

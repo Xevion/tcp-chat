@@ -1,3 +1,4 @@
+import html
 import json
 import time
 from typing import List, Tuple
@@ -57,3 +58,10 @@ def prepare_message_history(messages: List[Tuple[int, str, str, str, int]]) -> b
 def prepare_request(request: str) -> bytes:
     """Helper function for creating a request message."""
     return prepare_json({'type': constants.Types.REQUEST, 'request': request})
+
+
+def formatted_message(message: dict) -> str:
+    """Given a message dict object, return a color formatted and GUI ready string."""
+    nick_esc = html.escape(message["nickname"])
+    msg_esc = html.escape(message["message"])
+    return f'&lt;<span style="color: {message["color"]}">{nick_esc}</span>&gt; {msg_esc}'
