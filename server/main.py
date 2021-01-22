@@ -12,6 +12,7 @@ server.bind((host, port))
 server.listen()
 
 logger = logging.getLogger('server')
+logger.setLevel(logging.DEBUG)
 
 clients = []
 
@@ -27,6 +28,10 @@ def receive():
             client = handler.Client(conn, address, clients)
             clients.append(client)
             client.request_nickname()
+
+            # Inform all clients of new client, give new client connections list
+            for client in clients:
+                client.send_connections_list()
 
             # Start Handling Thread For Client
             thread = threading.Thread(target=client.handle, name=client.id[:8])

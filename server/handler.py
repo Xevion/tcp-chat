@@ -13,9 +13,9 @@ import helpers
 from exceptions import DataReceptionException
 from server import db
 from server.commands import CommandHandler
-from server.db import Database
 
 logger = logging.getLogger('handler')
+logger.setLevel(logging.DEBUG)
 
 
 class BaseClient(object):
@@ -23,12 +23,12 @@ class BaseClient(object):
 
     def __init__(self, conn: socket.socket, all_clients: List['Client'], address) -> None:
         self.conn, self.all_clients, self.address = conn, all_clients, address
-        self.db: Optional[Database] = None
+        self.db: Optional[db.Database] = None
 
     def connect_database(self):
         if self.db is None:
             logger.debug('Connecting client to database.')
-            self.db = Database()
+            self.db = db.Database()
 
     def send(self, message: bytes) -> None:
         """Sends a pre-encoded message to this client."""
@@ -89,7 +89,7 @@ class Client(BaseClient):
     def connect_database(self) -> None:
         if self.db is None:
             logger.debug(f'Connecting Client({self.id[:8]}) to the database.')
-            self.db = Database()
+            self.db = db.Database()
 
     def request_nickname(self) -> None:
         """Send a request for the client's nickname information."""
@@ -149,13 +149,19 @@ class Client(BaseClient):
         else:
             logger.info(f'{self.nickname} changed their name to {nickname}')
         self.nickname = nickname
+        # New nickname has to be sent to all clients
+        for client in self.all_clients:
+            client.send_connections_list()
 
     def close(self) -> None:
         logger.info(f'Client {self.id} closed. ({self.nickname})')
         self.conn.close()  # Close socket connection
         self.all_clients.remove(self)  # Remove the user from the global client list
         self.broadcast_message(f'{self.nickname} left!')  # Now we can broadcast it's exit message
-        self.db.conn.close()  # Close database connection
+        # Inform all clients of the disconnected client
+        for client in self.all_clients:
+            client.send_connections_list()
+        self.db.close()  # Close database connection
 
     def handle(self) -> None:
         self.connect_database()
@@ -164,8 +170,6 @@ class Client(BaseClient):
                 data = self.receive()
 
                 if data['type'] == constants.Types.REQUEST:
-                    if data['request'] == constants.Requests.REFRESH_CONNECTIONS_LIST:
-                        self.send_connections_list()
                     if data['request'] == constants.Requests.GET_MESSAGE_HISTORY:
                         self.send_message_history(
                             limit=data.get('limit', 50), time_limit=data.get('time_limit', 60 * 30)

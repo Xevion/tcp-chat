@@ -6,6 +6,8 @@ from typing import List
 import constants
 
 logger = logging.getLogger('database')
+logger.setLevel(logging.DEBUG)
+
 lock = threading.Lock()
 
 
@@ -20,6 +22,9 @@ class Database(object):
         return self.__isClosed
 
     def close(self) -> None:
+        """
+        Closes the database connection and record it's connection status.
+        """
         if self.__isClosed:
             logger.warning(f'Database connection is already closed.', exc_info=True)
         else:
@@ -30,7 +35,9 @@ class Database(object):
         with lock:
             cur = self.conn.cursor()
             try:
+                # check if the table exists
                 cur.execute('''SELECT name FROM sqlite_master WHERE type='table' AND name='?';''', 'message')
+                # if it doesn't exist, create the table and report it
                 if cur.fetchone() is None:
                     self.conn.execute('''CREATE TABLE message
                                         (id INTEGER PRIMARY KEY,
@@ -55,14 +62,15 @@ class Database(object):
         :return: The unique integer primary key chosen for the message, i.e. it's ID.
         """
         with lock:
-            cur = self.conn.cursor()
-            try:
-                cur.execute('''INSERT INTO message (nickname, connection_hash, color, message, timestamp)
-                            VALUES (?, ?, ?, ?, ?)''', [nickname, user_hash, color, message, timestamp])
-                logger.debug(f'Message {cur.lastrowid} recorded.')
-                return cur.lastrowid
-            finally:
-                cur.close()
+            with self.conn:
+                cur = self.conn.cursor()
+                try:
+                    cur.execute('''INSERT INTO message (nickname, connection_hash, color, message, timestamp)
+                                VALUES (?, ?, ?, ?, ?)''', [nickname, user_hash, color, message, timestamp])
+                    logger.debug(f'Message {cur.lastrowid} recorded.')
+                    return cur.lastrowid
+                finally:
+                    cur.close()
 
     def get_messages(self, columns: List[str] = None):
         with lock:

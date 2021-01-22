@@ -11,6 +11,7 @@ if TYPE_CHECKING:
     from server.handler import Client
 
 logger = logging.getLogger('commands')
+logger.setLevel(logging.DEBUG)
 
 
 class CommandHandler:
@@ -24,10 +25,13 @@ class CommandHandler:
         self.client = client
         self.aliases = {}
         self.commands = {}
-        self.__install_command(self.reroll, 'Reroll', 'reroll', 'Change your color to a random color.', aliases=['newcolor'])
-        self.__install_command(self.help, 'Help', 'help', 'Get info on a given commands functionality and more.', aliases=['about', 'doc'])
+        self.__install_command(self.reroll, 'Reroll', 'reroll', 'Change your color to a random color.',
+                               aliases=['newcolor'])
+        self.__install_command(self.help, 'Help', 'help', 'Get info on a given commands functionality and more.',
+                               aliases=['about', 'doc'])
 
-    def __install_command(self, func: Callable, name: str = None, command_name: str = None, description: str = '', aliases: List[str] = None):
+    def __install_command(self, func: Callable, name: str = None, command_name: str = None, description: str = '',
+                          aliases: List[str] = None):
         if aliases is None:
             aliases = []
 
@@ -75,21 +79,24 @@ class CommandHandler:
         Randomly change the client's color to a different color.
         """
         i = 0
-        newColor = self.client.color
+        new_color = self.client.color
         choices = constants.Colors.has_contrast(float(minimum_contrast))
 
-        while i < 50 and newColor == self.client.color:
-            newColor = random.choice(choices)
+        while i < 50 and new_color == self.client.color:
+            new_color = random.choice(choices)
 
-        self.client.color = newColor
-        contrast = round(constants.Colors.WHITE.contrast_ratio(newColor), 1)
-        return f'Changed your color to {newColor.name} ({newColor.hex}/{contrast})'
+        self.client.color = new_color
+        contrast = round(constants.Colors.WHITE.contrast_ratio(new_color), 1)
+        return f'Changed your color to {new_color.name} ({new_color.hex}/{contrast})'
 
-    def help(self, command: str) -> Optional[str]:
+    def help(self, command: str = None) -> Optional[str]:
         """
         Print information about a given command
         :return:
         """
+        if command is None:
+            return f"'help' requires 1 argument (command: str)."
+
         if command in self.aliases.keys():
             command = self.aliases[command]
 

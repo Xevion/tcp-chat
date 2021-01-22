@@ -29,7 +29,6 @@ class Requests:
     The Requests class provides a universal naming for the types of requests that can be made and received.
     """
     REQUEST_NICK = 'REQUEST_NICK'  # Send the server the client's nickname
-    REFRESH_CONNECTIONS_LIST = 'REFRESH_CLIENT_LIST'  # Send the client all connections to the server and their information
     GET_MESSAGE_HISTORY = 'GET_MESSAGE_HISTORY'  # Send the client a detailed list of all messages sent up to a certain point.
 
 
