@@ -4,11 +4,13 @@ import random
 import socket
 import time
 import uuid
-from typing import Any, List
+from json import JSONDecodeError
+from typing import Any, List, Optional
 
 import constants
 import helpers
 # noinspection PyUnresolvedReferences
+from exceptions import DataReceptionException
 from server import db
 from server.commands import CommandHandler
 from server.db import Database
@@ -123,11 +125,21 @@ class Client(BaseClient):
                 cur.close()
 
     def receive(self) -> Any:
-        length = int(self.conn.recv(constants.HEADER_LENGTH).decode('utf-8'))
-        logger.debug(f'Header received - Length {length}')
-        data = json.loads(self.conn.recv(length).decode('utf-8'))
-        logger.info(f'Data received/parsed, type: {data["type"]}')
-        return data
+        try:
+            length = int(self.conn.recv(constants.HEADER_LENGTH).decode('utf-8'))
+        except ValueError:
+            raise DataReceptionException('The socket did not receive the expected header.')
+        else:
+            logger.debug(f'Header received - Length {length}')
+
+        try:
+            data = self.conn.recv(length).decode('utf-8')
+            data = json.loads(data)
+        except JSONDecodeError:
+            raise DataReceptionException('The socket received a invalid JSON structure.')
+        else:
+            logger.info(f'Data received/parsed, type: {data["type"]}')
+            return data
 
     def handle_nickname(self, nickname: str) -> None:
         if self.last_nickname_change is None:
