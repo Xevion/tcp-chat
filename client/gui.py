@@ -45,15 +45,17 @@ class MainWindow(QMainWindow, Ui_MainWindow):
 
         # Setup message receiving thread worker
         self.receiveThread = ReceiveWorker(self.client, self.nickname)
-        self.receiveThread.messages.connect(self.addMessage)
+        self.receiveThread.messages.connect(self.add_message)
         self.receiveThread.client_list.connect(self.update_connections)
         self.receiveThread.logs.connect(self.log)
+        self.receiveThread.data_stats.connect(self.count_stats)
+        self.receiveThread.sent_nick.connect(self._ready)
         self.receiveThread.start()
 
+        # Setup
         self.connectionsListTimer = QTimer()
         self.connectionsListTimer.timeout.connect(self.refresh_connections)
         self.connectionsListTimer.start(1000 * 30)
-        self.receiveThread.sent_nick.connect(self._ready)
 
         self.messageBox.setPlaceholderText('Type your message here...')
         self.messageBox.installEventFilter(self)
@@ -61,6 +63,15 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.messages = SortedList(key=lambda message: message['time'])
         self.added_messages = []
         self.max_message_id = -1
+
+        self.sent, self.received = 0, 0
+
+    def count_stats(self, sent: bool, change: int) -> None:
+        if sent:
+            self.sent += change
+        else:
+            self.received += change
+        self.data_stats.setText(f'{helpers.sizeof_fmt(self.sent)} Sent, {helpers.sizeof_fmt(self.received)} Received')
 
     def log(self, log_data: dict) -> None:
         logger.log(level=log_data['level'], msg=log_data['message'], exc_info=log_data['error'])
@@ -84,7 +95,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
     def eventFilter(self, obj, event) -> bool:
         if event.type() == QEvent.KeyPress and obj is self.messageBox:
             if event.key() == Qt.Key_Return and self.messageBox.hasFocus():
-                self.sendMessage(self.messageBox.toPlainText())
+                self.send_message(self.messageBox.toPlainText())
                 self.messageBox.clear()
                 self.messageBox.setText('')
                 cursor = self.messageBox.textCursor()
@@ -107,7 +118,11 @@ class MainWindow(QMainWindow, Ui_MainWindow):
 
         scrollbar.setValue(scrollbar.maximum() if atMaximum else lastPosition)
 
-    def addMessage(self, message: dict) -> None:
+    def send(self, data: bytes, **kwargs) -> None:
+        self.count_stats(True, len(data))
+        self.client.send(data, **kwargs)
+
+    def add_message(self, message: dict) -> None:
         message_id = message['id']
         if message_id not in self.added_messages:
             message['compiled'] = helpers.formatted_message(message)
@@ -124,10 +139,10 @@ class MainWindow(QMainWindow, Ui_MainWindow):
 
             self.refresh_messages()
 
-    def sendMessage(self, message: str) -> None:
+    def send_message(self, message: str) -> None:
         message = message.strip()
         if len(message) > 0:
-            self.client.send(helpers.prepare_json(
+            self.send(helpers.prepare_json(
                 {
                     'type': constants.Types.MESSAGE,
                     'content': message
@@ -136,7 +151,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
 
     def refresh_connections(self) -> None:
         logger.info('Requesting connections list')
-        self.client.send(helpers.prepare_json(
+        self.send(helpers.prepare_json(
             {
                 'type': constants.Types.REQUEST,
                 'request': constants.Requests.REFRESH_CONNECTIONS_LIST
@@ -145,7 +160,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
 
     def get_message_history(self) -> None:
         logger.info('Requesting message history')
-        self.client.send(helpers.prepare_json(
+        self.send(helpers.prepare_json(
             {
                 'type': constants.Types.REQUEST,
                 'request': constants.Requests.GET_MESSAGE_HISTORY

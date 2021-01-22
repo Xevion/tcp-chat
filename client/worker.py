@@ -14,6 +14,7 @@ class ReceiveWorker(QThread):
     error = pyqtSignal()
     sent_nick = pyqtSignal()
     logs = pyqtSignal(dict)
+    data_stats = pyqtSignal(bool, int)  # bool: True if sent stats change, False if received stats change
 
     def __init__(self, client: socket.socket, nickname: str, parent=None):
         QThread.__init__(self, parent)
@@ -43,17 +44,26 @@ class ReceiveWorker(QThread):
             }
         )
 
+    def send(self, data: bytes, **kwargs) -> None:
+        self.data_stats.emit(True, len(data))
+        self.client.send(data, **kwargs)
+
     def run(self):
         try:
             while self.__isRunning:
                 try:
-                    raw_length = self.client.recv(constants.HEADER_LENGTH).decode('utf-8')
-                    if not raw_length:
-                        continue
-                    raw = self.client.recv(int(raw_length)).decode('utf-8')
-                    if not raw:
-                        continue
+                    # Receive and parse the header
+                    raw_header = self.client.recv(constants.HEADER_LENGTH)
+                    raw_length = raw_header.decode('utf-8')
+                    if not raw_length: continue
+
+                    # Now receive the amount of data the header specified
+                    raw_data = self.client.recv(int(raw_length))
+                    raw = raw_data.decode('utf-8')
+                    if not raw: continue
                     message = json.loads(raw)
+
+                    self.data_stats.emit(False, len(raw_header) + len(raw_data))
 
                     if message['type'] == constants.Types.REQUEST:
                         self.log(f'Data[{int(raw_length)}] received, {message["type"]}/{message["request"]}.',
@@ -63,7 +73,7 @@ class ReceiveWorker(QThread):
 
                     if message['type'] == constants.Types.REQUEST:
                         if message['request'] == constants.Requests.REQUEST_NICK:
-                            self.client.send(helpers.prepare_json(
+                            self.send(helpers.prepare_json(
                                 {
                                     'type': constants.Types.NICKNAME,
                                     'nickname': self.nickname
