@@ -9,6 +9,7 @@ from sortedcontainers import SortedList
 
 import constants
 import helpers
+import re
 from client.MainWindow import Ui_MainWindow
 from client.dialog import NicknameDialog
 from client.worker import ReceiveWorker
@@ -16,46 +17,35 @@ from client.worker import ReceiveWorker
 IP = '127.0.0.1'
 PORT = 55555
 
-logging.basicConfig(level=logging.DEBUG,
-                    format='[%(asctime)s] [%(levelname)s] [%(threadName)s] %(message)s')
+logging.basicConfig(format='[%(asctime)s] [%(levelname)s] [%(threadName)s] %(message)s')
 logger = logging.getLogger('gui')
+logger.setLevel(logging.DEBUG)
 
 
 class MainWindow(QMainWindow, Ui_MainWindow):
-    def __init__(self, *args, **kwargs):
+    def __init__(self, ip:str, port:int, nickname: str, *args, **kwargs):
+        # Initial UI setup
         super(MainWindow, self).__init__(*args, **kwargs)
         self.setupUi(self)
         self.show()
-        self.closed = False
 
-        # Get Nickname
-        while True:
-            self.nicknameDialog = NicknameDialog(self)
-            self.nicknameDialog.exec_()
-            self.nickname = self.nicknameDialog.lineEdit.text().strip()
-            if len(self.nickname) >= 3:
-                self.closed = True
-                break
-            elif self.closed:
-                break
+        self.ip, self.port, self.nickname = ip, port, nickname
+        self.closed = False
 
         # Connect to server
         self.client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        self.client.connect((IP, PORT))
+        # TODO: Research more socket options, possibly improving client functionality
+        self.client.connect((ip, port))
 
         # Setup message receiving thread worker
         self.receiveThread = ReceiveWorker(self.client, self.nickname)
-        self.receiveThread.messages.connect(self.add_message)
-        self.receiveThread.client_list.connect(self.update_connections)
-        self.receiveThread.logs.connect(self.log)
-        self.receiveThread.data_stats.connect(self.count_stats)
+        self.receiveThread.messages.connect(self.add_message)  # Adding new messages
+        self.receiveThread.client_list.connect(self.update_connections)  # Updating the connections list
+        self.receiveThread.logs.connect(self.log)  # Receiving logging messages from a thread
+        self.receiveThread.data_stats.connect(self.count_stats)  # Receiving data usage stats
+        # TODO: Improve initial client/server data exchange
         self.receiveThread.sent_nick.connect(self._ready)
         self.receiveThread.start()
-
-        # Setup
-        self.connectionsListTimer = QTimer()
-        self.connectionsListTimer.timeout.connect(self.refresh_connections)
-        self.connectionsListTimer.start(1000 * 30)
 
         self.messageBox.setPlaceholderText('Type your message here...')
         self.messageBox.installEventFilter(self)
@@ -78,7 +68,6 @@ class MainWindow(QMainWindow, Ui_MainWindow):
 
     def _ready(self):
         logger.debug('Nickname sent. Ready to communicate with server further...')
-        self.refresh_connections()
         self.get_message_history()
 
     def closeEvent(self, event):
@@ -99,8 +88,6 @@ class MainWindow(QMainWindow, Ui_MainWindow):
 
     def refresh_messages(self) -> None:
         """Completely refresh the chat box text."""
-        min_time = min(map(lambda msg: msg['time'], self.messages))
-
         scrollbar = self.messageHistory.verticalScrollBar()
         lastPosition = scrollbar.value()
         atMaximum = lastPosition == scrollbar.maximum()
@@ -141,15 +128,6 @@ class MainWindow(QMainWindow, Ui_MainWindow):
                     'content': message
                 }
             ))
-
-    def refresh_connections(self) -> None:
-        logger.info('Requesting connections list')
-        self.send(helpers.prepare_json(
-            {
-                'type': constants.Types.REQUEST,
-                'request': constants.Requests.REFRESH_CONNECTIONS_LIST
-            }
-        ))
 
     def get_message_history(self) -> None:
         logger.info('Requesting message history')

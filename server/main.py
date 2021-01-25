@@ -2,10 +2,11 @@ import logging
 import socket
 import threading
 
+import constants
 from server import handler
 
-host = '127.0.0.1'
-port = 55555
+host = constants.DEFAULT_IP
+port = constants.DEFAULT_PORT
 
 server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 server.bind((host, port))
