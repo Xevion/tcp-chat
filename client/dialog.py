@@ -61,6 +61,24 @@ class ConnectionDialog(QDialog, Ui_ConnectionDialog):
 
         self.show()
 
+    def connect(self) -> None:
+        self.connect_pressed = True
+        self.close()
+
+    def event(self, event: QEvent) -> bool:
+        if event.type() == QEvent.StatusTip:
+            self.status_bar.showMessage(event.tip())
+            return True
+        return super().event(event)
+
+    @property
+    def settings(self) -> ConnectionOptions:
+        return ConnectionOptions(ip=self.server_address_input.text(),
+                                 port=int(self.port_input.text()),
+                                 nickname=self.nickname_input.text(),
+                                 password=self.password_input.text(),
+                                 remember=self.remember_checkbox.checkState())
+
     def validation(self, full: bool = True) -> None:
         address, port = self.validate_address()
 
@@ -84,7 +102,8 @@ class ConnectionDialog(QDialog, Ui_ConnectionDialog):
         address = self.server_address_input.text() or constants.DEFAULT_IP
         port = self.port_input.text() or constants.DEFAULT_PORT
 
-        valid_address = len(address) > 0 and re.match(r'^\d{1,4}\.\d{1,4}\.\d{1,4}\.\d{1,4}|localhost$', address) is not None
+        valid_address = len(address) > 0 and re.match(r'^\d{1,4}\.\d{1,4}\.\d{1,4}\.\d{1,4}|localhost$',
+                                                      address) is not None
         valid_port = len(port) > 0 and re.match(r'^\d{4,5}$', port) is not None and 1024 <= int(port) <= 65536
 
         return valid_address, valid_port

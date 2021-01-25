@@ -1,4 +1,5 @@
 from typing import List
+from collections import namedtuple
 
 import os
 import webcolors
@@ -8,6 +9,11 @@ __BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 HEADER_LENGTH = 10
 MINIMUM_CONTRAST = 4.65
 DATABASE = os.path.join(__BASE_DIR, 'messages.db')
+
+DEFAULT_IP = "127.0.0.1"
+DEFAULT_PORT = "5555"
+
+ConnectionOptions = namedtuple('ConnectionOptions', ['ip', 'port', 'nickname', 'password', 'remember'])
 
 
 class Types:
