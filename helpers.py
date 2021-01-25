@@ -1,7 +1,7 @@
 import html
 import json
 import time
-from typing import List, Tuple
+from typing import List, Tuple, Any
 
 import constants
 
@@ -14,14 +14,14 @@ def prepare(message: str, encoding='utf-8') -> bytes:
     return (header + message).encode(encoding)
 
 
-def prepare_json(object) -> bytes:
+def prepare_json(obj: Any) -> bytes:
     """
     Prepares a object for sending as encoded JSON with a header.
 
-    :param object: A JSON-encodable object
+    :param obj: A JSON-encodable object
     :return: Encoded JSON
     """
-    return prepare(json.dumps(object))
+    return prepare(json.dumps(obj))
 
 
 def prepare_message(nickname: str, message: str, color: str, message_id: int, timestamp: int = None) -> bytes:
@@ -65,3 +65,11 @@ def formatted_message(message: dict) -> str:
     nick_esc = html.escape(message["nickname"])
     msg_esc = html.escape(message["message"])
     return f'&lt;<span style="color: {message["color"]}">{nick_esc}</span>&gt; {msg_esc}'
+
+
+def sizeof_fmt(num, suffix='B'):
+    for unit in ['', 'Ki', 'Mi', 'Gi', 'Ti', 'Pi', 'Ei', 'Zi']:
+        if abs(num) < 1024.0:
+            return "%3.1f%s%s" % (num, unit, suffix)
+        num /= 1024.0
+    return "%.1f%s%s" % (num, 'Yi', suffix)

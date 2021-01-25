@@ -9,10 +9,10 @@ from client.gui import MainWindow
 logger = logging.getLogger(__file__)
 
 
-def main():
+def main(nickname: str = None):
     app = QApplication([])
     app.setApplicationName("TCPChat Client")
-    connect_dialog = ConnectionDialog()
+    connect_dialog = ConnectionDialog(nickname=nickname)
     app.exec_()
 
     if connect_dialog.connect_pressed:

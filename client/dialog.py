@@ -44,9 +44,11 @@ class NicknameDialog(QDialog, Ui_NicknameDialog):
 
 
 class ConnectionDialog(QDialog, Ui_ConnectionDialog):
-    def __init__(self, *args, **kwargs):
+    def __init__(self, nickname: str = None,  *args, **kwargs):
         super(ConnectionDialog, self).__init__(*args, **kwargs)
         self.setupUi(self)
+
+        if nickname: self.nickname_input.setText(nickname)
 
         self.connect_button.setDisabled(True)
         self.server_address_input.textEdited.connect(self.validation)
