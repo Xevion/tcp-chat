@@ -1,6 +1,14 @@
-from PyQt5.QtWidgets import QDialog
+import re
+from typing import Tuple
 
+from PyQt5 import QtCore, QtGui
+from PyQt5.QtCore import QEvent
+from PyQt5.QtWidgets import QDialog, QStatusBar, QWidget
+
+import constants
+from client.ConnectionDialog import Ui_ConnectionDialog
 from client.nickname import Ui_NicknameDialog
+from constants import ConnectionOptions
 
 
 class NicknameDialog(QDialog, Ui_NicknameDialog):
@@ -33,3 +41,50 @@ class NicknameDialog(QDialog, Ui_NicknameDialog):
         """Tries to submit the Dialog through the QLineEdit via Enter key"""
         if not self.disabled:
             self.accept()
+
+
+class ConnectionDialog(QDialog, Ui_ConnectionDialog):
+    def __init__(self, *args, **kwargs):
+        super(ConnectionDialog, self).__init__(*args, **kwargs)
+        self.setupUi(self)
+
+        self.connect_button.setDisabled(True)
+        self.server_address_input.textEdited.connect(self.validation)
+        self.port_input.textEdited.connect(self.validation)
+        self.nickname_input.textEdited.connect(self.validation)
+        self.connect_button.pressed.connect(self.connect)
+
+        self.status_bar = QStatusBar(self)
+        self.status_layout.addWidget(self.status_bar)
+
+        self.connect_pressed = False
+
+        self.show()
+
+    def validation(self, full: bool = True) -> None:
+        address, port = self.validate_address()
+
+        if not address and not port:
+            self.status_bar.showMessage('Please fill in a valid server address and port.', 3000)
+        elif not address:
+            self.status_bar.showMessage('Please fill in a valid server address.', 3000)
+        elif not port:
+            self.status_bar.showMessage('Please fill in a valid port number.', 3000)
+        elif full and not self.validate_nickname():
+            self.status_bar.showMessage('Please use a valid nickname. Letters and digits, 3-15 characters long.', 3000)
+
+        self.connect_button.setDisabled(not (self.validate_address() and self.validate_nickname()))
+
+    def validate_nickname(self) -> bool:
+        """Returns True if the nickname follows the nickname guidelines requested."""
+        return re.match(r'^[A-z0-9]{3,15}$', self.nickname_input.text()) is not None
+
+    def validate_address(self) -> Tuple[bool, bool]:
+        """Returns True if the server address and port combination is valid"""
+        address = self.server_address_input.text() or constants.DEFAULT_IP
+        port = self.port_input.text() or constants.DEFAULT_PORT
+
+        valid_address = len(address) > 0 and re.match(r'^\d{1,4}\.\d{1,4}\.\d{1,4}\.\d{1,4}|localhost$', address) is not None
+        valid_port = len(port) > 0 and re.match(r'^\d{4,5}$', port) is not None and 1024 <= int(port) <= 65536
+
+        return valid_address, valid_port
