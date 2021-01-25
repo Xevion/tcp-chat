@@ -11,7 +11,7 @@ MINIMUM_CONTRAST = 4.65
 DATABASE = os.path.join(__BASE_DIR, 'messages.db')
 
 DEFAULT_IP = "127.0.0.1"
-DEFAULT_PORT = "5555"
+DEFAULT_PORT = 5555
 
 ConnectionOptions = namedtuple('ConnectionOptions', ['ip', 'port', 'nickname', 'password', 'remember'])
 

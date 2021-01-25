@@ -82,14 +82,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.get_message_history()
 
     def closeEvent(self, event):
-        if self.nicknameDialog and not self.closed:
-            logger.debug('Closing nickname dialog before main window')
-            self.closed = True
-            self.nicknameDialog.close()
-        else:
-            self.receiveThread.stop()
-            self.connectionsListTimer.stop()
-
+        self.receiveThread.stop()
         event.accept()  # let the window close
 
     def eventFilter(self, obj, event) -> bool:

@@ -73,14 +73,15 @@ class ConnectionDialog(QDialog, Ui_ConnectionDialog):
 
     @property
     def settings(self) -> ConnectionOptions:
-        return ConnectionOptions(ip=self.server_address_input.text(),
-                                 port=int(self.port_input.text()),
+        return ConnectionOptions(ip=self.server_address_input.text() or constants.DEFAULT_IP,
+                                 port=int(self.port_input.text() or constants.DEFAULT_PORT),
                                  nickname=self.nickname_input.text(),
                                  password=self.password_input.text(),
                                  remember=self.remember_checkbox.checkState())
 
     def validation(self, full: bool = True) -> None:
         address, port = self.validate_address()
+        nickname = self.validate_nickname()
 
         if not address and not port:
             self.status_bar.showMessage('Please fill in a valid server address and port.', 3000)
@@ -88,10 +89,11 @@ class ConnectionDialog(QDialog, Ui_ConnectionDialog):
             self.status_bar.showMessage('Please fill in a valid server address.', 3000)
         elif not port:
             self.status_bar.showMessage('Please fill in a valid port number.', 3000)
-        elif full and not self.validate_nickname():
+        elif full and not nickname:
             self.status_bar.showMessage('Please use a valid nickname. Letters and digits, 3-15 characters long.', 3000)
 
-        self.connect_button.setDisabled(not (self.validate_address() and self.validate_nickname()))
+        self.connect_button.setDisabled(not (address and port and nickname))
+        self.test_connection_button.setDisabled(not (address and port))
 
     def validate_nickname(self) -> bool:
         """Returns True if the nickname follows the nickname guidelines requested."""
@@ -100,7 +102,7 @@ class ConnectionDialog(QDialog, Ui_ConnectionDialog):
     def validate_address(self) -> Tuple[bool, bool]:
         """Returns True if the server address and port combination is valid"""
         address = self.server_address_input.text() or constants.DEFAULT_IP
-        port = self.port_input.text() or constants.DEFAULT_PORT
+        port = self.port_input.text() or str(constants.DEFAULT_PORT)
 
         valid_address = len(address) > 0 and re.match(r'^\d{1,4}\.\d{1,4}\.\d{1,4}\.\d{1,4}|localhost$',
                                                       address) is not None
