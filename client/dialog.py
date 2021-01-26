@@ -3,7 +3,7 @@ from typing import Tuple
 
 from PyQt5 import QtCore, QtGui
 from PyQt5.QtCore import QEvent
-from PyQt5.QtWidgets import QDialog, QStatusBar, QWidget
+from PyQt5.QtWidgets import QDialog, QStatusBar, QWidget, QSpacerItem, QSizePolicy
 
 import constants
 from client.ConnectionDialog import Ui_ConnectionDialog
@@ -48,9 +48,12 @@ class ConnectionDialog(QDialog, Ui_ConnectionDialog):
         super(ConnectionDialog, self).__init__(*args, **kwargs)
         self.setupUi(self)
 
-        if nickname: self.nickname_input.setText(nickname)
-
         self.connect_button.setDisabled(True)
+
+        if nickname:
+            self.nickname_input.setText(nickname)
+            self.validation()
+
         self.server_address_input.textEdited.connect(self.validation)
         self.port_input.textEdited.connect(self.validation)
         self.nickname_input.textEdited.connect(self.validation)
