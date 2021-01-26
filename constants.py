@@ -8,7 +8,8 @@ __BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
 HEADER_LENGTH = 10
 MINIMUM_CONTRAST = 4.65
-DATABASE = os.path.join(__BASE_DIR, 'messages.db')
+CLIENT_DATABASE = os.path.join(__BASE_DIR, 'client.db')
+SERVER_DATABASE = os.path.join(__BASE_DIR, 'server.db')
 
 DEFAULT_IP = "127.0.0.1"
 DEFAULT_PORT = 5555

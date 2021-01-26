@@ -23,12 +23,12 @@ class BaseClient(object):
 
     def __init__(self, conn: socket.socket, all_clients: List['Client'], address) -> None:
         self.conn, self.all_clients, self.address = conn, all_clients, address
-        self.db: Optional[db.Database] = None
+        self.db: Optional[db.ServerDatabase] = None
 
     def connect_database(self):
         if self.db is None:
             logger.debug('Connecting client to database.')
-            self.db = db.Database()
+            self.db = db.ServerDatabase()
 
     def send(self, message: bytes) -> None:
         """Sends a pre-encoded message to this client."""
@@ -89,7 +89,7 @@ class Client(BaseClient):
     def connect_database(self) -> None:
         if self.db is None:
             logger.debug(f'Connecting Client({self.id[:8]}) to the database.')
-            self.db = db.Database()
+            self.db = db.ServerDatabase()
 
     def request_nickname(self) -> None:
         """Send a request for the client's nickname information."""

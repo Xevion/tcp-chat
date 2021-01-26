@@ -1,6 +1,7 @@
 # Repository specific
 .idea
-messages.db
+server.db
+client.db
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

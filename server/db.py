@@ -1,7 +1,7 @@
 import logging
+import os
 import sqlite3
 import threading
-from typing import List
 
 import constants
 
@@ -12,9 +12,9 @@ lock = threading.Lock()
 
 
 class Database(object):
-    def __init__(self):
-        logger.debug(f"Connected to '{constants.DATABASE}'")
-        self.conn = sqlite3.connect(constants.DATABASE)
+    def __init__(self, database: str):
+        logger.debug(f"Connected to './{os.path.basename(database)}'")
+        self.conn = sqlite3.connect(database, detect_types=sqlite3.PARSE_DECLTYPES)
         self.__isClosed = False
 
     @property
@@ -30,6 +30,38 @@ class Database(object):
         else:
             self.conn.close()
             self.__isClosed = True
+
+    def construct(self) -> None:
+        raise NotImplementedError
+
+
+class ClientDatabase(Database):
+    def __init__(self):
+        super().__init__(constants.CLIENT_DATABASE)
+
+    def construct(self) -> None:
+        with lock:
+            cur = self.conn.cursor()
+            try:
+                cur.execute('''SELECT name FROM sqlite_master WHERE type='table' AND name = '?';''', 'connection')
+                if cur.fetchone() is None:
+                    self.conn.execute('''CREATE TABLE connection
+                                        (id INTEGER PRIMARY KEY,
+                                        address TEXT NOT NULL,
+                                        port INTEGER NOT NULL,
+                                        nickname TEXT NOT NULL,
+                                        password TEXT,
+                                        connections INTEGER DEFAULT 1,
+                                        favorite BOOLEAN DEFAULT FALSE,
+                                        initial_time TIMESTAMP NOT NULL,
+                                        latest_time TIMESTAMP NOT NULL);''')
+            finally:
+                cur.close()
+
+
+class ServerDatabase(Database):
+    def __init__(self):
+        super().__init__(constants.SERVER_DATABASE)
 
     def construct(self):
         with lock:
@@ -71,13 +103,3 @@ class Database(object):
                     return cur.lastrowid
                 finally:
                     cur.close()
-
-    def get_messages(self, columns: List[str] = None):
-        with lock:
-            cur = self.conn.cursor()
-            try:
-                if columns is None:
-                    cur.execute('''SELECT * FROM message''')
-                    return cur.fetchall()
-            finally:
-                cur.close()
