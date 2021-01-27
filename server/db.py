@@ -2,6 +2,7 @@ import logging
 import os
 import sqlite3
 import threading
+import abc
 
 import constants
 
@@ -11,11 +12,13 @@ logger.setLevel(logging.DEBUG)
 lock = threading.Lock()
 
 
-class Database(object):
+class Database(abc.ABC):
     def __init__(self, database: str):
         logger.debug(f"Connected to './{os.path.basename(database)}'")
         self.conn = sqlite3.connect(database, detect_types=sqlite3.PARSE_DECLTYPES)
         self.__isClosed = False
+        self.__table = None
+        self.construct()
 
     @property
     def is_closed(self) -> bool:
@@ -32,55 +35,51 @@ class Database(object):
             self.__isClosed = True
 
     def construct(self) -> None:
-        raise NotImplementedError
+        with lock:
+            cur = self.conn.cursor()
+            try:
+                cur.execute('''SELECT name FROM sqlite_master WHERE type='table' AND name = ?;''', [self.__table])
+                if cur.fetchone() is None:
+                    self._construct()
+                    logger.info(f"'{self.__table}' table created.")
+            finally:
+                cur.close()
+
+    @abc.abstractmethod
+    def _construct(self) -> None:
+        pass
 
 
 class ClientDatabase(Database):
     def __init__(self):
         super().__init__(constants.CLIENT_DATABASE)
+        self.__table = 'connection'
 
-    def construct(self) -> None:
-        with lock:
-            cur = self.conn.cursor()
-            try:
-                cur.execute('''SELECT name FROM sqlite_master WHERE type='table' AND name = '?';''', 'connection')
-                if cur.fetchone() is None:
-                    self.conn.execute('''CREATE TABLE connection
-                                        (id INTEGER PRIMARY KEY,
-                                        address TEXT NOT NULL,
-                                        port INTEGER NOT NULL,
-                                        nickname TEXT NOT NULL,
-                                        password TEXT,
-                                        connections INTEGER DEFAULT 1,
-                                        favorite BOOLEAN DEFAULT FALSE,
-                                        initial_time TIMESTAMP NOT NULL,
-                                        latest_time TIMESTAMP NOT NULL);''')
-            finally:
-                cur.close()
+    def _construct(self) -> None:
+        self.conn.execute('''CREATE TABLE connection
+                            (id INTEGER PRIMARY KEY,
+                            address TEXT NOT NULL,
+                            port INTEGER NOT NULL,
+                            nickname TEXT NOT NULL,
+                            password TEXT,
+                            connections INTEGER DEFAULT 1,
+                            favorite BOOLEAN DEFAULT FALSE,
+                            initial_time TIMESTAMP NOT NULL,
+                            latest_time TIMESTAMP NOT NULL);''')
 
 
 class ServerDatabase(Database):
     def __init__(self):
         super().__init__(constants.SERVER_DATABASE)
 
-    def construct(self):
-        with lock:
-            cur = self.conn.cursor()
-            try:
-                # check if the table exists
-                cur.execute('''SELECT name FROM sqlite_master WHERE type='table' AND name='?';''', 'message')
-                # if it doesn't exist, create the table and report it
-                if cur.fetchone() is None:
-                    self.conn.execute('''CREATE TABLE message
-                                        (id INTEGER PRIMARY KEY,
-                                        nickname TEXT NOT NULL,
-                                        connection_hash TEXT NOT NULL,
-                                        color TEXT DEFAULT '#000000',
-                                        message TEXT DEFAULT '',
-                                        timestamp INTEGER NOT NULL)''')
-                    logger.debug("'message' table created.")
-            finally:
-                cur.close()
+    def _construct(self):
+        self.conn.execute('''CREATE TABLE message
+                            (id INTEGER PRIMARY KEY,
+                            nickname TEXT NOT NULL,
+                            connection_hash TEXT NOT NULL,
+                            color TEXT DEFAULT '#000000',
+                            message TEXT DEFAULT '',
+                            timestamp INTEGER NOT NULL)''')
 
     def add_message(self, nickname: str, user_hash: str, color: str, message: str, timestamp: int) -> int:
         """
