@@ -1,17 +1,14 @@
 import logging
 import socket
-from pprint import pprint
+from typing import List
 
-from PyQt5.QtCore import Qt, QEvent, QTimer
-from PyQt5.QtWidgets import QMainWindow
-
+from PyQt5.QtCore import Qt, QEvent
+from PyQt5.QtWidgets import QMainWindow, QLabel
 from sortedcontainers import SortedList
 
 import constants
 import helpers
-import re
 from client.MainWindow import Ui_MainWindow
-from client.dialog import NicknameDialog
 from client.worker import ReceiveWorker
 
 IP = '127.0.0.1'
@@ -23,7 +20,7 @@ logger.setLevel(logging.DEBUG)
 
 
 class MainWindow(QMainWindow, Ui_MainWindow):
-    def __init__(self, ip:str, port:int, nickname: str, *args, **kwargs):
+    def __init__(self, ip: str, port: int, nickname: str, *args, **kwargs):
         # Initial UI setup
         super(MainWindow, self).__init__(*args, **kwargs)
         self.setupUi(self)
@@ -44,12 +41,16 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.receiveThread.logs.connect(self.log)  # Receiving logging messages from a thread
         self.receiveThread.data_stats.connect(self.count_stats)  # Receiving data usage stats
         # TODO: Improve initial client/server data exchange
-        self.receiveThread.sent_nick.connect(self._ready)
         self.receiveThread.start()
 
-        self.messageBox.setPlaceholderText('Type your message here...')
+        # Setup message box return key logic
         self.messageBox.installEventFilter(self)
 
+        self.data_stats = QLabel("0.00KB Sent, 0.00KB Received")
+        self.data_stats.setAlignment(Qt.AlignVCenter)
+        self.status_bar.addPermanentWidget(self.data_stats)
+
+        # Variables for managing
         self.messages = SortedList(key=lambda message: message['time'])
         self.added_messages = []
         self.max_message_id = -1
@@ -57,20 +58,22 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.sent, self.received = 0, 0
 
     def count_stats(self, sent: bool, change: int) -> None:
-        if sent:
-            self.sent += change
-        else:
-            self.received += change
-        self.data_stats.setText(f'{helpers.sizeof_fmt(self.sent)} Sent, {helpers.sizeof_fmt(self.received)} Received')
+        """Handler for counting data statistics."""
+        if change != 0:
+            if sent:
+                self.sent += change
+            else:
+                self.received += change
+            self.data_stats.setText(f'{helpers.sizeof_fmt(self.sent)} Sent, '
+                                    f'{helpers.sizeof_fmt(self. received)} Received')
 
-    def log(self, log_data: dict) -> None:
+    @staticmethod
+    def log(log_data: dict) -> None:
+        """Handler for data logging from a thread."""
         logger.log(level=log_data['level'], msg=log_data['message'], exc_info=log_data['error'])
 
-    def _ready(self):
-        logger.debug('Nickname sent. Ready to communicate with server further...')
-        self.get_message_history()
-
     def closeEvent(self, event):
+        """Handle closing by stopping the receive thread."""
         self.receiveThread.stop()
         event.accept()  # let the window close
 
@@ -89,14 +92,14 @@ class MainWindow(QMainWindow, Ui_MainWindow):
     def refresh_messages(self) -> None:
         """Completely refresh the chat box text."""
         scrollbar = self.messageHistory.verticalScrollBar()
-        lastPosition = scrollbar.value()
-        atMaximum = lastPosition == scrollbar.maximum()
+        last_position = scrollbar.value()
+        at_maximum = last_position == scrollbar.maximum()
 
         self.messageHistory.setText('<br>'.join(
             msg['compiled'] for msg in self.messages
         ))
 
-        scrollbar.setValue(scrollbar.maximum() if atMaximum else lastPosition)
+        scrollbar.setValue(scrollbar.maximum() if at_maximum else last_position)
 
     def send(self, data: bytes, **kwargs) -> None:
         self.count_stats(True, len(data))
@@ -129,15 +132,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
                 }
             ))
 
-    def get_message_history(self) -> None:
-        logger.info('Requesting message history')
-        self.send(helpers.prepare_json(
-            {
-                'type': constants.Types.REQUEST,
-                'request': constants.Requests.GET_MESSAGE_HISTORY
-            }
-        ))
-
-    def update_connections(self, users):
+    def update_connections(self, users: List[dict]):
+        """Update the Connections List widget"""
         self.connectionsList.clear()
         self.connectionsList.addItems([user['nickname'] for user in users])

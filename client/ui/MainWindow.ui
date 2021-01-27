@@ -7,8 +7,20 @@
     <x>0</x>
     <y>0</y>
     <width>800</width>
-    <height>643</height>
+    <height>625</height>
    </rect>
+  </property>
+  <property name="sizePolicy">
+   <sizepolicy hsizetype="Preferred" vsizetype="Expanding">
+    <horstretch>0</horstretch>
+    <verstretch>0</verstretch>
+   </sizepolicy>
+  </property>
+  <property name="minimumSize">
+   <size>
+    <width>0</width>
+    <height>20</height>
+   </size>
   </property>
   <property name="windowTitle">
    <string>TCPChat</string>
@@ -21,36 +33,17 @@
     </sizepolicy>
    </property>
    <layout class="QGridLayout" name="gridLayout">
-    <item row="2" column="1" colspan="2">
-     <widget class="QTextEdit" name="messageBox">
-      <property name="sizePolicy">
-       <sizepolicy hsizetype="Expanding" vsizetype="Maximum">
-        <horstretch>0</horstretch>
-        <verstretch>0</verstretch>
-       </sizepolicy>
-      </property>
-      <property name="maximumSize">
-       <size>
-        <width>16777215</width>
-        <height>80</height>
-       </size>
+    <item row="0" column="1">
+     <widget class="QLabel" name="chat_history_label">
+      <property name="text">
+       <string>Chat History</string>
       </property>
      </widget>
     </item>
     <item row="0" column="2">
-     <widget class="QLabel" name="label">
+     <widget class="QLabel" name="connections_label">
       <property name="text">
        <string>Connections</string>
-      </property>
-     </widget>
-    </item>
-    <item row="1" column="1">
-     <widget class="QTextBrowser" name="messageHistory">
-      <property name="sizePolicy">
-       <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
-        <horstretch>0</horstretch>
-        <verstretch>5</verstretch>
-       </sizepolicy>
       </property>
      </widget>
     </item>
@@ -68,32 +61,43 @@
         <height>16777215</height>
        </size>
       </property>
-     </widget>
-    </item>
-    <item row="0" column="1">
-     <widget class="QLabel" name="label_2">
-      <property name="text">
-       <string>Chat History</string>
+      <property name="statusTip">
+       <string>View and/or moderate all users connected to the server.</string>
       </property>
      </widget>
     </item>
-    <item row="3" column="1">
-     <spacer name="horizontalSpacer">
-      <property name="orientation">
-       <enum>Qt::Horizontal</enum>
+    <item row="2" column="1" colspan="2">
+     <widget class="QTextEdit" name="messageBox">
+      <property name="sizePolicy">
+       <sizepolicy hsizetype="Expanding" vsizetype="Maximum">
+        <horstretch>0</horstretch>
+        <verstretch>0</verstretch>
+       </sizepolicy>
       </property>
-      <property name="sizeHint" stdset="0">
+      <property name="maximumSize">
        <size>
-        <width>100</width>
-        <height>20</height>
+        <width>16777215</width>
+        <height>80</height>
        </size>
       </property>
-     </spacer>
+      <property name="statusTip">
+       <string>Type a message to send to the server.</string>
+      </property>
+      <property name="placeholderText">
+       <string>Type your message here...</string>
+      </property>
+     </widget>
     </item>
-    <item row="3" column="2">
-     <widget class="QLabel" name="data_stats">
-      <property name="text">
-       <string>0.00KB Sent, 0.00KB Received</string>
+    <item row="1" column="1">
+     <widget class="QTextBrowser" name="messageHistory">
+      <property name="sizePolicy">
+       <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
+        <horstretch>0</horstretch>
+        <verstretch>5</verstretch>
+       </sizepolicy>
+      </property>
+      <property name="statusTip">
+       <string>View all messages sent by the server and other users.</string>
       </property>
      </widget>
     </item>
@@ -117,6 +121,14 @@
     <addaction name="actionQuit"/>
    </widget>
    <addaction name="menuFile"/>
+  </widget>
+  <widget class="QStatusBar" name="status_bar">
+   <property name="minimumSize">
+    <size>
+     <width>0</width>
+     <height>20</height>
+    </size>
+   </property>
   </widget>
   <action name="actionConnect_to">
    <property name="text">

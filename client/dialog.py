@@ -1,9 +1,8 @@
 import re
 from typing import Tuple
 
-from PyQt5 import QtCore, QtGui
 from PyQt5.QtCore import QEvent
-from PyQt5.QtWidgets import QDialog, QStatusBar, QWidget, QSpacerItem, QSizePolicy
+from PyQt5.QtWidgets import QDialog, QStatusBar
 
 import constants
 from client.ConnectionDialog import Ui_ConnectionDialog

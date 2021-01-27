@@ -78,7 +78,6 @@ class Ui_ConnectionDialog(object):
         self.connection_groupbox.setObjectName("connection_groupbox")
         self.gridLayout_4 = QtWidgets.QGridLayout(self.connection_groupbox)
         self.gridLayout_4.setSizeConstraint(QtWidgets.QLayout.SetMaximumSize)
-        self.gridLayout_4.setContentsMargins(-1, -1, -1, 0)
         self.gridLayout_4.setObjectName("gridLayout_4")
         self.nickname_layout = QtWidgets.QHBoxLayout()
         self.nickname_layout.setObjectName("nickname_layout")

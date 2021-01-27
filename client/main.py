@@ -17,5 +17,5 @@ def main(nickname: str = None):
 
     if connect_dialog.connect_pressed:
         settings = connect_dialog.settings
-        m = MainWindow(settings.ip, settings.port, settings.nickname)
+        window = MainWindow(settings.ip, settings.port, settings.nickname)
         app.exec_()
