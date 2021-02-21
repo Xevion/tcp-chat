@@ -5,7 +5,7 @@ from PyQt5.QtCore import QEvent
 from PyQt5.QtWidgets import QDialog, QStatusBar
 
 import constants
-from client.ConnectionDialog import Ui_ConnectionDialog
+from client.ui.ConnectionDialog import Ui_ConnectionDialog
 from client.nickname import Ui_NicknameDialog
 from constants import ConnectionOptions
 

@@ -8,7 +8,7 @@ from sortedcontainers import SortedList
 
 import constants
 import helpers
-from client.MainWindow import Ui_MainWindow
+from client.ui.MainWindow import Ui_MainWindow
 from client.worker import ReceiveWorker
 
 IP = '127.0.0.1'
