@@ -1,8 +1,9 @@
+import abc
 import logging
 import os
 import sqlite3
 import threading
-import abc
+from typing import List, Optional, Union
 
 import constants
 
@@ -14,11 +15,12 @@ lock = threading.Lock()
 
 class Database(abc.ABC):
     def __init__(self, database: str):
-        logger.debug(f"Connected to './{os.path.basename(database)}'")
         self.conn = sqlite3.connect(database, detect_types=sqlite3.PARSE_DECLTYPES)
+        logger.debug(f"Connected to './{os.path.basename(database)}'")
         self.__isClosed = False
-        self.__table = None
+        self._tables: List[str] = []
         self.construct()
+        logger.debug('Completed database construction.')
 
     @property
     def is_closed(self) -> bool:
@@ -34,29 +36,17 @@ class Database(abc.ABC):
             self.conn.close()
             self.__isClosed = True
 
-    def construct(self) -> None:
-        with lock:
-            cur = self.conn.cursor()
-            try:
-                cur.execute('''SELECT name FROM sqlite_master WHERE type='table' AND name = ?;''', [self.__table])
-                if cur.fetchone() is None:
-                    self._construct()
-                    logger.info(f"'{self.__table}' table created.")
-            finally:
-                cur.close()
-
     @abc.abstractmethod
-    def _construct(self) -> None:
-        pass
+    def construct(self) -> None:
+        self._construct()
 
 
 class ClientDatabase(Database):
     def __init__(self):
         super().__init__(constants.CLIENT_DATABASE)
-        self.__table = 'connection'
 
-    def _construct(self) -> None:
-        self.conn.execute('''CREATE TABLE connection
+    def construct(self) -> None:
+        self.conn.execute('''CREATE TABLE IF NOT EXISTS connection
                             (id INTEGER PRIMARY KEY,
                             address TEXT NOT NULL,
                             port INTEGER NOT NULL,
@@ -72,8 +62,8 @@ class ServerDatabase(Database):
     def __init__(self):
         super().__init__(constants.SERVER_DATABASE)
 
-    def _construct(self):
-        self.conn.execute('''CREATE TABLE message
+    def construct(self):
+        self.conn.execute('''CREATE TABLE IF NOT EXISTS message
                             (id INTEGER PRIMARY KEY,
                             nickname TEXT NOT NULL,
                             connection_hash TEXT NOT NULL,
@@ -98,7 +88,7 @@ class ServerDatabase(Database):
                 try:
                     cur.execute('''INSERT INTO message (nickname, connection_hash, color, message, timestamp)
                                 VALUES (?, ?, ?, ?, ?)''', [nickname, user_hash, color, message, timestamp])
-                    logger.debug(f'Message {cur.lastrowid} recorded.')
+                    logger.debug(f'Message #{cur.lastrowid} recorded.')
                     return cur.lastrowid
                 finally:
                     cur.close()
