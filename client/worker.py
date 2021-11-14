@@ -25,7 +25,8 @@ class ReceiveWorker(QThread):
     def stop(self) -> None:
         self.__isRunning = False
 
-    def __extract_message(self, data) -> dict:
+    @staticmethod
+    def __extract_message(data) -> dict:
         return {
             'nickname': data['nickname'],
             'message': data['content'],

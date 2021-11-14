@@ -38,6 +38,7 @@ def prepare_message(nickname: str, message: str, color: str, message_id: int, ti
 
 
 def prepare_message_history(messages: List[Tuple[int, str, str, str, int]]) -> bytes:
+    """Returns a encoded JSON message history object with the messages provided"""
     return prepare_json(
         {
             'type': constants.Types.MESSAGE_HISTORY,
@@ -70,6 +71,6 @@ def formatted_message(message: dict) -> str:
 def sizeof_fmt(num, suffix='B'):
     for unit in ['', 'Ki', 'Mi', 'Gi', 'Ti', 'Pi', 'Ei', 'Zi']:
         if abs(num) < 1024.0:
-            return "%3.1f%s%s" % (num, unit, suffix)
+            return "%3.0f%s%s" % (num, unit, suffix)
         num /= 1024.0
     return "%.1f%s%s" % (num, 'Yi', suffix)

@@ -50,7 +50,6 @@ class BaseClient(object):
             timestamp=timestamp
         )
         for client in self.all_clients:
-            print(f'Sending a message to {client.nickname}')
             client.send(prepared)
 
     def broadcast(self, message: bytes) -> None:
@@ -73,6 +72,7 @@ class Client(BaseClient):
         super().__init__(conn, all_clients, address)
 
         self.id = str(uuid.uuid4())
+        self.short_id = self.id[:8]
         self.nickname = self.id[:8]
         self.color: constants.Color = random.choice(constants.Colors.has_contrast(float(constants.MINIMUM_CONTRAST)))
 
@@ -83,12 +83,13 @@ class Client(BaseClient):
 
     def __repr__(self) -> str:
         if self.last_nickname_change is None:
-            return f'Client({self.id[:8]})'
-        return f'Client({self.nickname}, {self.id[:8]})'
+            return f'Client({self.short_id})'
+        return f'Client({self.nickname}, {self.short_id})'
 
     def connect_database(self) -> None:
+        """Instantiate"""
         if self.db is None:
-            logger.debug(f'Connecting Client({self.id[:8]}) to the database.')
+            logger.debug(f'Connecting Client({self.short_id}) to the database.')
             self.db = db.ServerDatabase()
 
     def request_nickname(self) -> None:
@@ -143,12 +144,13 @@ class Client(BaseClient):
 
     def handle_nickname(self, nickname: str) -> None:
         if self.last_nickname_change is None:
-            logger.info("Nickname is {}".format(nickname))
+            logger.info(f'Nickname is {nickname}')
             self.broadcast_message(f'{nickname} joined!')
             self.last_nickname_change = time.time()
         else:
             logger.info(f'{self.nickname} changed their name to {nickname}')
         self.nickname = nickname
+
         # New nickname has to be sent to all clients
         for client in self.all_clients:
             client.send_connections_list()
@@ -164,9 +166,13 @@ class Client(BaseClient):
         self.db.close()  # Close database connection
 
     def handle(self) -> None:
-        self.connect_database()
+        """Server mainloop function for a given socket connection"""
+
+        self.connect_database()  # Initialize a database connection
+
         while True:
             try:
+                logger.info('Waiting to received data')
                 data = self.receive()
 
                 if data['type'] == constants.Types.REQUEST:

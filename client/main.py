@@ -1,5 +1,4 @@
 import logging
-from typing import Tuple
 
 from PyQt5.QtWidgets import QApplication
 
