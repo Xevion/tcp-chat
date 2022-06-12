@@ -13,21 +13,32 @@ pipenv install
 
 ## Usage
 
-I like to use Windows Terminal to run both a server and client simultaneously inside one window.
+```bash
+python launch.py [c | s | server | client]
+```
+
+## Building
 
 ```bash
+make build
+
+# optional
+make clean
+```
+
+## Development Notes
+
+Launching Qt Designer
+
+```bash
+pyqt5-tools designer
+```
+
+Launching Dual Pane Windows Terminal
+
+```bash
+# Command Prompt
 wt -d . -p "Command Prompt" ; sp -d . -p "Command Prompt"
+# Powershell
+start wt -Arg "-d . -p `"Powershell`" ; sp -d . -p `"Powershell`""
 ```
-
-Then in each pane, run the client:
-```bash
-python launch.py c
-```
-and the server:
-```bash
-python launch.py s
-```
-
-## To-do List
-
-Expand to-do list
