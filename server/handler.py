@@ -129,17 +129,28 @@ class Client(BaseClient):
                 cur.close()
 
     def receive(self) -> Any:
-        while True:
+        """
+        Attempt to receive raw data over the TCP Socket connection.
+
+        This function takes use of the thread's Stop flag, and thus will raise a StopException automatically.
+        This function will raise and intercept socket.timeout exceptions regularly until a message header is received.
+        """
+
+        length = -1
+        while length == -1:
             try:
+                # Check if the stop flag has been set. Exceptions will be handled by parent function (handle).
                 self.check_stop()
+
+                # This will timeout in 0.5 seconds.
                 length = int(self.conn.recv(constants.HEADER_LENGTH).decode('utf-8'))
             except socket.timeout:
+                # Timeout occurred as expected.
                 continue
             except ValueError:
                 raise DataReceptionException('The socket did not receive the expected header.')
-            else:
-                logger.debug(f'Header received - Length {length}')
-                break
+
+        logger.debug(f'Header received - Length {length}')
 
         try:
             data = self.conn.recv(length).decode('utf-8')
