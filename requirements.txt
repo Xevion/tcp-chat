@@ -1,5 +1,0 @@
-pyqt5-tools~=5.15
-webcolors~=1.11.1
-PyQt5~=5.15.2
-sortedcontainers~=2.3.0
-Faker~=5.6.5

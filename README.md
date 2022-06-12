@@ -8,7 +8,7 @@ and `pyqt5` to create a simple server & client chat mimicking IRC.
 Create and activate a environment if needed, then install the project requirements:
 
 ```bash
-pip install -r requirements.txt
+pipenv install
 ```
 
 ## Usage

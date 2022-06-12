@@ -1,0 +1,17 @@
+[[source]]
+name = "pypi"
+url = "https://pypi.org/simple"
+verify_ssl = true
+
+[dev-packages]
+
+[packages]
+pyqt5-tools = "~=5.15"
+webcolors = "~=1.11.1"
+pyqt5 = "~=5.15.2"
+sortedcontainers = "~=2.3.0"
+faker = "~=9.8.1"
+pyinstaller = ">=4.3"
+
+[requires]
+python_version = "3.7"
