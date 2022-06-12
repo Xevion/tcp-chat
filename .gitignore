@@ -1,7 +1,6 @@
 # Repository specific
 .idea
-server.db
-client.db
+*.db
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
