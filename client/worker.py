@@ -4,8 +4,8 @@ import socket
 
 from PyQt5.QtCore import QThread, pyqtSignal
 
-import constants
-import helpers
+from shared import constants
+from shared import helpers
 
 
 class ReceiveWorker(QThread):

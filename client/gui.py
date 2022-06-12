@@ -6,8 +6,8 @@ from PyQt5.QtCore import Qt, QEvent
 from PyQt5.QtWidgets import QMainWindow, QLabel
 from sortedcontainers import SortedList
 
-import constants
-import helpers
+from shared import constants
+from shared import helpers
 from client.ui.MainWindow import Ui_MainWindow
 from client.worker import ReceiveWorker
 
@@ -65,7 +65,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             else:
                 self.received += change
             self.data_stats.setText(f'{helpers.sizeof_fmt(self.sent)} Sent, '
-                                    f'{helpers.sizeof_fmt(self. received)} Received')
+                                    f'{helpers.sizeof_fmt(self.received)} Received')
 
     @staticmethod
     def log(log_data: dict) -> None:
@@ -96,7 +96,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         at_maximum = last_position == scrollbar.maximum()
 
         self.messageHistory.setText('<br>'.join(
-            msg['compiled'] for msg in self.messages
+                msg['compiled'] for msg in self.messages
         ))
 
         scrollbar.setValue(scrollbar.maximum() if at_maximum else last_position)
@@ -126,10 +126,10 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         message = message.strip()
         if len(message) > 0:
             self.send(helpers.prepare_json(
-                {
-                    'type': constants.Types.MESSAGE,
-                    'content': message
-                }
+                    {
+                        'type': constants.Types.MESSAGE,
+                        'content': message
+                    }
             ))
 
     def update_connections(self, users: List[dict]):

@@ -5,7 +5,7 @@ import random
 from typing import List, Optional, Callable
 from typing import TYPE_CHECKING
 
-import constants
+from shared import constants
 
 if TYPE_CHECKING:
     from server.handler import Client

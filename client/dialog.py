@@ -4,10 +4,9 @@ from typing import Tuple
 from PyQt5.QtCore import QEvent
 from PyQt5.QtWidgets import QDialog, QStatusBar
 
-import constants
+from shared.constants import ConnectionOptions, DEFAULT_IP, DEFAULT_PORT
 from client.ui.ConnectionDialog import Ui_ConnectionDialog
 from client.nickname import Ui_NicknameDialog
-from constants import ConnectionOptions
 
 
 class NicknameDialog(QDialog, Ui_NicknameDialog):
@@ -26,7 +25,7 @@ class NicknameDialog(QDialog, Ui_NicknameDialog):
         self.show()
 
     def controlSubmit(self):
-        """Updates whether or not the dialog box is allowed to proceed"""
+        """Updates whether the dialog box is allowed to proceed"""
         if len(self.lineEdit.text()) > 2:
             if self.disabled:
                 self.disabled = False
@@ -43,7 +42,7 @@ class NicknameDialog(QDialog, Ui_NicknameDialog):
 
 
 class ConnectionDialog(QDialog, Ui_ConnectionDialog):
-    def __init__(self, nickname: str = None,  *args, **kwargs):
+    def __init__(self, nickname: str = None, *args, **kwargs):
         super(ConnectionDialog, self).__init__(*args, **kwargs)
         self.setupUi(self)
 
@@ -77,8 +76,8 @@ class ConnectionDialog(QDialog, Ui_ConnectionDialog):
 
     @property
     def settings(self) -> ConnectionOptions:
-        return ConnectionOptions(ip=self.server_address_input.text() or constants.DEFAULT_IP,
-                                 port=int(self.port_input.text() or constants.DEFAULT_PORT),
+        return ConnectionOptions(ip=self.server_address_input.text() or DEFAULT_IP,
+                                 port=int(self.port_input.text() or DEFAULT_PORT),
                                  nickname=self.nickname_input.text(),
                                  password=self.password_input.text(),
                                  remember=self.remember_checkbox.checkState())
@@ -105,8 +104,8 @@ class ConnectionDialog(QDialog, Ui_ConnectionDialog):
 
     def validate_address(self) -> Tuple[bool, bool]:
         """Returns True if the server address and port combination is valid"""
-        address = self.server_address_input.text() or constants.DEFAULT_IP
-        port = self.port_input.text() or str(constants.DEFAULT_PORT)
+        address = self.server_address_input.text() or DEFAULT_IP
+        port = self.port_input.text() or str(DEFAULT_PORT)
 
         valid_address = len(address) > 0 and re.match(r'^\d{1,4}\.\d{1,4}\.\d{1,4}\.\d{1,4}|localhost$',
                                                       address) is not None

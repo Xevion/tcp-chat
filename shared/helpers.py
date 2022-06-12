@@ -3,7 +3,7 @@ import json
 import time
 from typing import List, Tuple, Any
 
-import constants
+from shared import constants
 
 HEADER_LENGTH = 10
 

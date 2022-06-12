@@ -5,7 +5,7 @@ import sqlite3
 import threading
 from typing import List, Optional, Union
 
-import constants
+from shared import constants
 
 logger = logging.getLogger('database')
 logger.setLevel(logging.DEBUG)

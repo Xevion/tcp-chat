@@ -1,8 +1,9 @@
 import logging
 import socket
+import sys
 import threading
 
-import constants
+from shared import constants
 from server import handler
 
 host = constants.DEFAULT_IP
@@ -10,7 +11,7 @@ port = constants.DEFAULT_PORT
 
 server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 server.bind((host, port))
-server.listen()
+server.listen(1)
 
 logger = logging.getLogger('server')
 logger.setLevel(logging.DEBUG)
@@ -21,8 +22,11 @@ clients = []
 # Receiving / Listening Function
 def receive():
     while True:
+        conn = None
+
         try:
             # Accept Connection
+            logger.debug('Waiting for connections...')
             conn, address = server.accept()
             logger.info(f"New connection from {address}")
 
@@ -39,8 +43,12 @@ def receive():
             thread.start()
         except KeyboardInterrupt:
             logger.info('Server closed by user.')
+            if conn:
+                conn.close()
+            break
         except Exception as e:
             logger.critical(e, exc_info=e)
+            break
 
 
 if __name__ == '__main__':
