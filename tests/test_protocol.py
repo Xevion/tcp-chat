@@ -28,7 +28,20 @@ def test_encode_uses_byte_length_header():
     framed = protocol.encode({'content': 'hello'})
     header, body = framed[:protocol.HEADER_LENGTH], framed[protocol.HEADER_LENGTH:]
     assert int(header) == len(body)
-    assert json.loads(body.decode('utf-8')) == {'content': 'hello'}
+    assert json.loads(body.decode('utf-8'))['content'] == 'hello'
+
+
+def test_encode_stamps_protocol_version():
+    source = {'content': 'hello'}
+    decoded = protocol.read_message(FakeSocket(protocol.encode(source)))
+    assert decoded['v'] == protocol.PROTOCOL_VERSION
+    # The caller's dict must not be mutated by the stamping.
+    assert 'v' not in source
+
+
+def test_encode_keeps_an_explicit_version():
+    framed = protocol.encode({'content': 'hello', 'v': 99})
+    assert protocol.read_message(FakeSocket(framed))['v'] == 99
 
 
 def test_recv_exact_reassembles_fragmented_reads():
@@ -45,4 +58,6 @@ def test_recv_exact_raises_when_peer_closes_early():
 def test_read_message_round_trips_through_a_chunked_socket():
     payload = {'type': 'MESSAGE', 'content': 'a longer message ' * 50}
     sock = FakeSocket(protocol.encode(payload), chunk_size=7)
-    assert protocol.read_message(sock) == payload
+    decoded = protocol.read_message(sock)
+    assert decoded['type'] == payload['type']
+    assert decoded['content'] == payload['content']

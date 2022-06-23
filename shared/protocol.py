@@ -11,9 +11,20 @@ from typing import Any
 
 HEADER_LENGTH = 10
 
+# Bumped whenever the message envelope changes in a way that isn't backwards
+# compatible. Stamped onto every outgoing dict frame so both ends can tell which
+# revision they are talking to.
+PROTOCOL_VERSION = 1
+
 
 def encode(obj: Any) -> bytes:
-    """Encode an object as a length-prefixed UTF-8 JSON frame."""
+    """Encode an object as a length-prefixed UTF-8 JSON frame.
+
+    Dict frames are stamped with the protocol version under the ``v`` key unless
+    they already carry one. The input object is left untouched.
+    """
+    if isinstance(obj, dict) and 'v' not in obj:
+        obj = dict(obj, v=PROTOCOL_VERSION)
     body = json.dumps(obj).encode('utf-8')
     header = '{:<{width}}'.format(len(body), width=HEADER_LENGTH).encode('utf-8')
     return header + body
