@@ -6,6 +6,7 @@ from PyQt5.QtCore import QThread, pyqtSignal
 
 from shared import constants
 from shared import helpers
+from shared import protocol
 
 
 class ReceiveWorker(QThread):
@@ -53,24 +54,20 @@ class ReceiveWorker(QThread):
         try:
             while self.__isRunning:
                 try:
-                    # Receive and parse the header
-                    raw_header = self.client.recv(constants.HEADER_LENGTH)
-                    raw_length = raw_header.decode('utf-8')
-                    if not raw_length: continue
+                    # Receive the header, then exactly the body length it describes
+                    raw_header = protocol.recv_exact(self.client, protocol.HEADER_LENGTH)
+                    length = int(raw_header.decode('utf-8'))
 
-                    # Now receive the amount of data the header specified
-                    raw_data = self.client.recv(int(raw_length))
-                    raw = raw_data.decode('utf-8')
-                    if not raw: continue
-                    message = json.loads(raw)
+                    raw_data = protocol.recv_exact(self.client, length)
+                    message = json.loads(raw_data.decode('utf-8'))
 
                     self.data_stats.emit(False, len(raw_header) + len(raw_data))
 
                     if message['type'] == constants.Types.REQUEST:
-                        self.log(f'Data[{int(raw_length)}] received, {message["type"]}/{message["request"]}.',
+                        self.log(f'Data[{length}] received, {message["type"]}/{message["request"]}.',
                                  level=logging.DEBUG)
                     else:
-                        self.log(f'Data[{int(raw_length)}] received, {message["type"]}.', level=logging.DEBUG)
+                        self.log(f'Data[{length}] received, {message["type"]}.', level=logging.DEBUG)
 
                     if message['type'] == constants.Types.REQUEST:
                         if message['request'] == constants.Requests.REQUEST_NICK:
