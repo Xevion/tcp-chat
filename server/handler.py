@@ -9,6 +9,7 @@ from typing import Any, Callable, List, Optional
 
 from shared import constants
 from shared import helpers
+from shared import protocol
 # noinspection PyUnresolvedReferences
 from shared.exceptions import DataReceptionException, StopException
 from server import db
@@ -136,25 +137,31 @@ class Client(BaseClient):
         This function will raise and intercept socket.timeout exceptions regularly until a message header is received.
         """
 
-        length = -1
-        while length == -1:
+        while True:
             try:
                 # Check if the stop flag has been set. Exceptions will be handled by parent function (handle).
                 self.check_stop()
 
                 # This will timeout in 0.5 seconds.
-                length = int(self.conn.recv(constants.HEADER_LENGTH).decode('utf-8'))
+                header = protocol.recv_exact(self.conn, protocol.HEADER_LENGTH)
+                break
             except socket.timeout:
                 # Timeout occurred as expected.
                 continue
-            except ValueError:
-                raise DataReceptionException('The socket did not receive the expected header.')
+            except ConnectionError:
+                raise DataReceptionException('The connection closed before a header arrived.')
+
+        try:
+            length = int(header.decode('utf-8'))
+        except ValueError:
+            raise DataReceptionException('The socket did not receive the expected header.')
 
         logger.debug(f'Header received - Length {length}')
 
         try:
-            data = self.conn.recv(length).decode('utf-8')
-            data = json.loads(data)
+            data = json.loads(protocol.recv_exact(self.conn, length).decode('utf-8'))
+        except ConnectionError:
+            raise DataReceptionException('The connection closed mid-message.')
         except JSONDecodeError:
             raise DataReceptionException('The socket received a invalid JSON structure.')
         else:
