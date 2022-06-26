@@ -1,17 +1,9 @@
 import html
-import json
 import time
 from typing import List, Tuple, Any
 
 from shared import constants
-
-HEADER_LENGTH = 10
-
-
-def prepare(message: str, encoding='utf-8') -> bytes:
-    """Prepares a message for sending through a socket by adding a proper header and encoding it."""
-    header = f'{len(message):<{HEADER_LENGTH}}'
-    return (header + message).encode(encoding)
+from shared import protocol
 
 
 def prepare_json(obj: Any) -> bytes:
@@ -21,7 +13,7 @@ def prepare_json(obj: Any) -> bytes:
     :param obj: A JSON-encodable object
     :return: Encoded JSON
     """
-    return prepare(json.dumps(obj))
+    return protocol.encode(obj)
 
 
 def prepare_message(nickname: str, message: str, color: str, message_id: int, timestamp: int = None) -> bytes:

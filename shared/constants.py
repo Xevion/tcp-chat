@@ -6,7 +6,6 @@ import webcolors
 
 __BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
-HEADER_LENGTH = 10
 MINIMUM_CONTRAST = 4.65
 CLIENT_DATABASE = os.path.join(__BASE_DIR, 'client.db')
 SERVER_DATABASE = os.path.join(__BASE_DIR, 'server.db')

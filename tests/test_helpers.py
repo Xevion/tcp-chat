@@ -1,17 +1,11 @@
 from shared import helpers
-
-
-def test_prepare_prefixes_a_fixed_width_header():
-    framed = helpers.prepare('hi')
-    # 10-byte left-justified length header, then the body.
-    assert framed == b'2         hi'
-    assert len(framed) == helpers.HEADER_LENGTH + 2
+from shared import protocol
 
 
 def test_prepare_json_round_trips():
     import json
     framed = helpers.prepare_json({'type': 'MESSAGE', 'content': 'hello'})
-    header, body = framed[:helpers.HEADER_LENGTH], framed[helpers.HEADER_LENGTH:]
+    header, body = framed[:protocol.HEADER_LENGTH], framed[protocol.HEADER_LENGTH:]
     assert int(header) == len(body)
     assert json.loads(body.decode('utf-8'))['content'] == 'hello'
 
