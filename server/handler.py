@@ -78,6 +78,7 @@ class Client(BaseClient):
         self.id = str(uuid.uuid4())
         self.short_id = self.id[:8]
         self.nickname = self.id[:8]
+        self.room = constants.DEFAULT_ROOM
         self.color: constants.Color = random.choice(constants.Colors.has_contrast(float(constants.MINIMUM_CONTRAST)))
 
         self.command = CommandHandler(self)

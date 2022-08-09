@@ -12,6 +12,7 @@ SERVER_DATABASE = os.path.join(__BASE_DIR, 'server.db')
 
 DEFAULT_IP = "127.0.0.1"
 DEFAULT_PORT = 5555
+DEFAULT_ROOM = "general"
 
 ConnectionOptions = namedtuple('ConnectionOptions', ['ip', 'port', 'nickname', 'password', 'remember'])
 
