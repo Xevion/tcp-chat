@@ -13,6 +13,7 @@ from shared import protocol
 # noinspection PyUnresolvedReferences
 from shared.exceptions import DataReceptionException, StopException
 from server import db
+from server import rooms
 from server.commands import CommandHandler
 
 logger = logging.getLogger('handler')
@@ -53,12 +54,12 @@ class BaseClient(object):
                 nickname='Server', message=message, color=constants.Colors.BLACK.hex, message_id=message_id,
                 timestamp=timestamp
         )
-        for client in self.all_clients:
+        for client in rooms.members_in(self.all_clients, getattr(self, 'room', constants.DEFAULT_ROOM)):
             client.send(prepared)
 
     def broadcast(self, message: bytes) -> None:
-        """Sends a pre-encoded message to all connected clients"""
-        for client in self.all_clients:
+        """Sends a pre-encoded message to all clients in the sender's room"""
+        for client in rooms.members_in(self.all_clients, getattr(self, 'room', constants.DEFAULT_ROOM)):
             client.send(message)
 
     def __repr__(self) -> str:
