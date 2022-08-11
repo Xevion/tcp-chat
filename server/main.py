@@ -35,11 +35,9 @@ def receive():
                 clients.append(client)
                 client.request_nickname()
 
-                # Inform all clients of new client, give new client connections list
-                if len(clients) > 0:
-                    logger.debug('Informing all connected clients of incoming connection.')
-                    for client in clients:
-                        client.send_connections_list()
+                # Inform the new client's room of the arrival
+                logger.debug('Informing the room of the incoming connection.')
+                client.notify_room(client.room)
 
                 # Start Handling Thread For Client
                 thread = threading.Thread(target=client.handle, name=client.id[:8])

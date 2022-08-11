@@ -102,14 +102,25 @@ class Client(BaseClient):
         """Send a request for the client's nickname information."""
         self.conn.send(helpers.prepare_request(constants.Requests.REQUEST_NICK))
 
-    def send_connections_list(self) -> None:
-        """Sends a list of connections to the server, identifying their nickname and color"""
-        self.conn.send(helpers.prepare_json(
+    def _room_user_list(self, room: str) -> bytes:
+        """Encode the USER_LIST of everyone currently in `room`."""
+        mates = rooms.members_in(self.all_clients, room)
+        return helpers.prepare_json(
                 {
                     'type': constants.Types.USER_LIST,
-                    'users': [{'nickname': other.nickname, 'color': other.color.hex} for other in self.all_clients]
+                    'users': [{'nickname': other.nickname, 'color': other.color.hex} for other in mates]
                 }
-        ))
+        )
+
+    def send_connections_list(self) -> None:
+        """Sends this client the list of users sharing its room."""
+        self.conn.send(self._room_user_list(self.room))
+
+    def notify_room(self, room: str) -> None:
+        """Send every member of `room` a refreshed user list."""
+        payload = self._room_user_list(room)
+        for member in rooms.members_in(self.all_clients, room):
+            member.send(payload)
 
     def send_message_history(self, limit: int, time_limit: int) -> None:
         limit = min(100, max(0, limit))
@@ -179,9 +190,8 @@ class Client(BaseClient):
             logger.info(f'{self.nickname} changed their name to {nickname}')
         self.nickname = nickname
 
-        # New nickname has to be sent to all clients
-        for client in self.all_clients:
-            client.send_connections_list()
+        # New nickname has to be sent to everyone sharing the room
+        self.notify_room(self.room)
 
     def check_stop(self) -> None:
         """Raises a StopException if the stop flag is set to true by the commanding main thread."""
@@ -194,9 +204,8 @@ class Client(BaseClient):
         self.conn.close()  # Close socket connection
         self.all_clients.remove(self)  # Remove the user from the global client list
         self.broadcast_message(f'{self.nickname} left!')  # Now we can broadcast it's exit message
-        # Inform all clients of the disconnected client
-        for client in self.all_clients:
-            client.send_connections_list()
+        # Inform the room's remaining members of the disconnect
+        self.notify_room(self.room)
         self.db.close()  # Close database connection
 
     def handle(self) -> None:
