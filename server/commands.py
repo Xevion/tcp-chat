@@ -27,6 +27,8 @@ class CommandHandler:
         self.commands = {}
         self.__install_command(self.reroll, 'Reroll', 'reroll', 'Change your color to a random color.',
                                aliases=['newcolor'])
+        self.__install_command(self.join, 'Join', 'join', 'Move to another room, e.g. /join games.',
+                               aliases=['j'])
         self.__install_command(self.help, 'Help', 'help', 'Get info on a given commands functionality and more.',
                                aliases=['about', 'doc'])
 
@@ -88,6 +90,26 @@ class CommandHandler:
         self.client.color = new_color
         contrast = round(constants.Colors.WHITE.contrast_ratio(new_color), 1)
         return f'Changed your color to {new_color.name} ({new_color.hex}/{contrast})'
+
+    def join(self, room: str = None) -> Optional[str]:
+        """
+        Move the client into another room, announcing the move to both rooms.
+        """
+        if room is None or not room.strip():
+            return 'Usage: /join <room>'
+
+        room = room.strip()
+        client = self.client
+        if room == client.room:
+            return f'You are already in {room}.'
+
+        old_room = client.room
+        client.broadcast_message(f'{client.nickname} left for {room}.')
+        client.room = room
+        client.broadcast_message(f'{client.nickname} joined the room.')
+        client.notify_room(old_room)
+        client.notify_room(room)
+        return None
 
     def help(self, command: str = None) -> Optional[str]:
         """
