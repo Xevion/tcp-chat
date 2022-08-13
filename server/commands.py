@@ -6,6 +6,7 @@ from typing import List, Optional, Callable
 from typing import TYPE_CHECKING
 
 from shared import constants
+from server.rooms import room_counts
 
 if TYPE_CHECKING:
     from server.handler import Client
@@ -29,6 +30,8 @@ class CommandHandler:
                                aliases=['newcolor'])
         self.__install_command(self.join, 'Join', 'join', 'Move to another room, e.g. /join games.',
                                aliases=['j'])
+        self.__install_command(self.rooms, 'Rooms', 'rooms', 'List the active rooms and their member counts.',
+                               aliases=['channels'])
         self.__install_command(self.help, 'Help', 'help', 'Get info on a given commands functionality and more.',
                                aliases=['about', 'doc'])
 
@@ -110,6 +113,14 @@ class CommandHandler:
         client.notify_room(old_room)
         client.notify_room(room)
         return None
+
+    def rooms(self, *args) -> Optional[str]:
+        """
+        List the active rooms and how many people are in each.
+        """
+        counts = room_counts(self.client.all_clients)
+        listing = ', '.join(f'{name} ({count})' for name, count in sorted(counts.items()))
+        return f'Active rooms: {listing}'
 
     def help(self, command: str = None) -> Optional[str]:
         """
