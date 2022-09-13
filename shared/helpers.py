@@ -53,6 +53,21 @@ def prepare_request(request: str) -> bytes:
     return prepare_json({'type': constants.Types.REQUEST, 'request': request})
 
 
+def prepare_ping() -> bytes:
+    """Builds a keep-alive PING frame."""
+    return prepare_json({'type': constants.Types.PING})
+
+
+def prepare_pong() -> bytes:
+    """Builds a PONG frame, the reply to a PING."""
+    return prepare_json({'type': constants.Types.PONG})
+
+
+def prepare_quit() -> bytes:
+    """Builds a QUIT frame announcing an intentional disconnect."""
+    return prepare_json({'type': constants.Types.QUIT})
+
+
 def formatted_message(message: dict) -> str:
     """Given a message dict object, return a color formatted and GUI ready string."""
     nick_esc = html.escape(message["nickname"])

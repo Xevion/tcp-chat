@@ -28,6 +28,9 @@ class Types:
     NICKNAME = 'NICKNAME'
     USER_LIST = 'USER_LIST'
     MESSAGE_HISTORY = 'MESSAGE_HISTORY'
+    PING = 'PING'  # Keep-alive probe; the receiver replies with a PONG
+    PONG = 'PONG'  # Reply to a PING, proving the connection is still alive
+    QUIT = 'QUIT'  # Sent by a client that is disconnecting on purpose
 
 
 class Requests:
