@@ -14,6 +14,7 @@ from shared import protocol
 from shared.exceptions import DataReceptionException, StopException
 from server import db
 from server import rooms
+from server import resilience
 from server.commands import CommandHandler
 
 logger = logging.getLogger('handler')
@@ -161,7 +162,8 @@ class Client(BaseClient):
                 header = protocol.recv_exact(self.conn, protocol.HEADER_LENGTH)
                 break
             except socket.timeout:
-                # Timeout occurred as expected.
+                # No data this cycle; use the idle time to run the keep-alive.
+                self.heartbeat()
                 continue
             except ConnectionError:
                 raise DataReceptionException('The connection closed before a header arrived.')
@@ -195,6 +197,15 @@ class Client(BaseClient):
 
         # New nickname has to be sent to everyone sharing the room
         self.notify_room(self.room)
+
+    def heartbeat(self) -> None:
+        """Probe a quiet client with a PING, or drop one that has gone silent too long."""
+        now = time.time()
+        if resilience.is_stale(self.last_seen, now, constants.PING_TIMEOUT):
+            raise DataReceptionException('The client stopped responding.')
+        if resilience.should_ping(self.last_seen, self.last_ping, now, constants.PING_INTERVAL):
+            self.conn.send(helpers.prepare_ping())
+            self.last_ping = now
 
     def check_stop(self) -> None:
         """Raises a StopException if the stop flag is set to true by the commanding main thread."""
