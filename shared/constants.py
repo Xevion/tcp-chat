@@ -14,6 +14,9 @@ DEFAULT_IP = "127.0.0.1"
 DEFAULT_PORT = 5555
 DEFAULT_ROOM = "general"
 
+PING_INTERVAL = 20  # Seconds of silence before the server probes a client with a PING
+PING_TIMEOUT = 60  # Seconds of silence before the server gives up on a client
+
 ConnectionOptions = namedtuple('ConnectionOptions', ['ip', 'port', 'nickname', 'password', 'remember'])
 
 

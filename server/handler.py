@@ -86,6 +86,8 @@ class Client(BaseClient):
         self.first_seen = time.time()
         self.last_nickname_change = None
         self.last_message_sent = None
+        self.last_seen = time.time()
+        self.last_ping = 0.0
 
     def __repr__(self) -> str:
         if self.last_nickname_change is None:
@@ -178,6 +180,7 @@ class Client(BaseClient):
         except JSONDecodeError:
             raise DataReceptionException('The socket received a invalid JSON structure.')
         else:
+            self.last_seen = time.time()
             logger.info(f'Data received/parsed, type: {data["type"]}')
             return data
 
@@ -224,6 +227,12 @@ class Client(BaseClient):
                                 limit=data.get('limit', 50), time_limit=data.get('time_limit', 60 * 30)
                         )
 
+                elif data['type'] == constants.Types.PONG:
+                    pass  # last_seen was already refreshed in receive()
+                elif data['type'] == constants.Types.QUIT:
+                    logger.info(f'{self.nickname} sent QUIT, closing connection.')
+                    self.close()
+                    break
                 elif data['type'] == constants.Types.NICKNAME:
                     self.handle_nickname(data['nickname'])
                 elif data['type'] == constants.Types.MESSAGE:
