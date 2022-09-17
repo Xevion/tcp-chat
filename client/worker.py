@@ -50,6 +50,27 @@ class ReceiveWorker(QThread):
         self.data_stats.emit(True, len(data))
         self.client.send(data, **kwargs)
 
+    def handle_message(self, message: dict) -> None:
+        """Dispatch a single decoded message from the server."""
+        if message['type'] == constants.Types.REQUEST:
+            if message['request'] == constants.Requests.REQUEST_NICK:
+                self.send(helpers.prepare_json(
+                    {
+                        'type': constants.Types.NICKNAME,
+                        'nickname': self.nickname
+                    }
+                ))
+                self.sent_nick.emit()
+        elif message['type'] == constants.Types.PING:
+            self.send(helpers.prepare_pong())
+        elif message['type'] == constants.Types.MESSAGE:
+            self.messages.emit(self.__extract_message(message))
+        elif message['type'] == constants.Types.USER_LIST:
+            self.client_list.emit(message['users'])
+        elif message['type'] == constants.Types.MESSAGE_HISTORY:
+            for submessage in message['messages']:
+                self.messages.emit(self.__extract_message(submessage))
+
     def run(self):
         try:
             while self.__isRunning:
@@ -69,22 +90,7 @@ class ReceiveWorker(QThread):
                     else:
                         self.log(f'Data[{length}] received, {message["type"]}.', level=logging.DEBUG)
 
-                    if message['type'] == constants.Types.REQUEST:
-                        if message['request'] == constants.Requests.REQUEST_NICK:
-                            self.send(helpers.prepare_json(
-                                {
-                                    'type': constants.Types.NICKNAME,
-                                    'nickname': self.nickname
-                                }
-                            ))
-                            self.sent_nick.emit()
-                    elif message['type'] == constants.Types.MESSAGE:
-                        self.messages.emit(self.__extract_message(message))
-                    elif message['type'] == constants.Types.USER_LIST:
-                        self.client_list.emit(message['users'])
-                    elif message['type'] == constants.Types.MESSAGE_HISTORY:
-                        for submessage in message['messages']:
-                            self.messages.emit(self.__extract_message(submessage))
+                    self.handle_message(message)
 
                 except Exception as e:
                     self.log(str(e), level=logging.CRITICAL, error=e)

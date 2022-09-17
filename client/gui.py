@@ -73,7 +73,11 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         logger.log(level=log_data['level'], msg=log_data['message'], exc_info=log_data['error'])
 
     def closeEvent(self, event):
-        """Handle closing by stopping the receive thread."""
+        """Handle closing by telling the server goodbye and stopping the receive thread."""
+        try:
+            self.send(helpers.prepare_quit())
+        except OSError:
+            pass  # socket already gone; nothing to announce
         self.receiveThread.stop()
         event.accept()  # let the window close
 
