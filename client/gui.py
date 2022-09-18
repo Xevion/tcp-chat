@@ -2,12 +2,13 @@ import logging
 import socket
 from typing import List
 
-from PyQt5.QtCore import Qt, QEvent
+from PyQt5.QtCore import Qt, QEvent, QTimer
 from PyQt5.QtWidgets import QMainWindow, QLabel
 from sortedcontainers import SortedList
 
 from shared import constants
 from shared import helpers
+from shared.backoff import backoff_delays
 from client.ui.MainWindow import Ui_MainWindow
 from client.worker import ReceiveWorker
 
@@ -28,6 +29,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
 
         self.ip, self.port, self.nickname = ip, port, nickname
         self.closed = False
+        self._reconnect_delays = None
 
         # Connect to server
         self.client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -35,13 +37,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.client.connect((ip, port))
 
         # Setup message receiving thread worker
-        self.receiveThread = ReceiveWorker(self.client, self.nickname)
-        self.receiveThread.messages.connect(self.add_message)  # Adding new messages
-        self.receiveThread.client_list.connect(self.update_connections)  # Updating the connections list
-        self.receiveThread.logs.connect(self.log)  # Receiving logging messages from a thread
-        self.receiveThread.data_stats.connect(self.count_stats)  # Receiving data usage stats
-        # TODO: Improve initial client/server data exchange
-        self.receiveThread.start()
+        self.start_worker()
 
         # Setup message box return key logic
         self.messageBox.installEventFilter(self)
@@ -56,6 +52,44 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.max_message_id = -1
 
         self.sent, self.received = 0, 0
+
+    def open_socket(self) -> bool:
+        """Open a fresh connection to the server, returning whether it succeeded."""
+        try:
+            self.client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            self.client.connect((self.ip, self.port))
+            return True
+        except OSError:
+            return False
+
+    def start_worker(self) -> None:
+        """Spin up a receive worker bound to the current socket and wire its signals."""
+        self.receiveThread = ReceiveWorker(self.client, self.nickname)
+        self.receiveThread.messages.connect(self.add_message)  # Adding new messages
+        self.receiveThread.client_list.connect(self.update_connections)  # Updating the connections list
+        self.receiveThread.logs.connect(self.log)  # Receiving logging messages from a thread
+        self.receiveThread.data_stats.connect(self.count_stats)  # Receiving data usage stats
+        self.receiveThread.error.connect(self.on_connection_lost)  # Reconnect when the socket drops
+        self.receiveThread.start()
+
+    def on_connection_lost(self) -> None:
+        """Begin a backoff-driven reconnect after the worker reports a dropped socket."""
+        if self.closed:
+            return
+        self.status_bar.showMessage('Connection lost, reconnecting...')
+        self._reconnect_delays = backoff_delays()
+        self.try_reconnect()
+
+    def try_reconnect(self) -> None:
+        """Attempt a single reconnect, rescheduling itself with backoff on failure."""
+        if self.closed:
+            return
+        if self.open_socket():
+            self.status_bar.showMessage('Reconnected.', 3000)
+            self.start_worker()
+        else:
+            delay = next(self._reconnect_delays)
+            QTimer.singleShot(int(delay * 1000), self.try_reconnect)
 
     def count_stats(self, sent: bool, change: int) -> None:
         """Handler for counting data statistics."""
@@ -74,6 +108,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
 
     def closeEvent(self, event):
         """Handle closing by telling the server goodbye and stopping the receive thread."""
+        self.closed = True  # stop any reconnect attempts from rescheduling
         try:
             self.send(helpers.prepare_quit())
         except OSError:
