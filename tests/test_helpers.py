@@ -22,7 +22,16 @@ def test_formatted_message_escapes_html():
         'nickname': '<b>nick</b>',
         'message': '<script>',
         'color': '#ff0000',
+        'time': 0,
     })
     assert '&lt;b&gt;nick&lt;/b&gt;' in formatted
     assert '<script>' not in formatted
     assert '#ff0000' in formatted
+
+
+def test_formatted_message_includes_a_timestamp():
+    import re
+    formatted = helpers.formatted_message({
+        'nickname': 'a', 'message': 'hi', 'color': '#fff', 'time': 0,
+    })
+    assert re.search(r'\[\d{2}:\d{2}\]', formatted) is not None
