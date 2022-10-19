@@ -1,4 +1,5 @@
 import abc
+import datetime
 import logging
 import os
 import sqlite3
@@ -42,8 +43,8 @@ class Database(abc.ABC):
 
 
 class ClientDatabase(Database):
-    def __init__(self):
-        super().__init__(constants.CLIENT_DATABASE)
+    def __init__(self, database: str = constants.CLIENT_DATABASE):
+        super().__init__(database)
 
     def construct(self) -> None:
         self.conn.execute('''CREATE TABLE IF NOT EXISTS connection
@@ -56,6 +57,39 @@ class ClientDatabase(Database):
                             favorite BOOLEAN DEFAULT FALSE,
                             initial_time TIMESTAMP NOT NULL,
                             latest_time TIMESTAMP NOT NULL);''')
+
+    def remember_connection(self, address: str, port: int, nickname: str, password: str = None) -> None:
+        """Record a successful connection, bumping its use count if already known."""
+        now = datetime.datetime.now()
+        with lock:
+            with self.conn:
+                cur = self.conn.cursor()
+                try:
+                    cur.execute('SELECT id FROM connection WHERE address = ? AND port = ? AND nickname = ?',
+                                [address, port, nickname])
+                    row = cur.fetchone()
+                    if row is None:
+                        cur.execute('''INSERT INTO connection (address, port, nickname, password, initial_time, latest_time)
+                                    VALUES (?, ?, ?, ?, ?, ?)''', [address, port, nickname, password, now, now])
+                    else:
+                        cur.execute('UPDATE connection SET connections = connections + 1, latest_time = ?, password = ? '
+                                    'WHERE id = ?', [now, password, row[0]])
+                finally:
+                    cur.close()
+
+    def last_connection(self) -> Optional[dict]:
+        """Return the most recently used connection, or None if none are stored."""
+        with lock:
+            cur = self.conn.cursor()
+            try:
+                cur.execute('''SELECT address, port, nickname, password FROM connection
+                            ORDER BY latest_time DESC LIMIT 1''')
+                row = cur.fetchone()
+            finally:
+                cur.close()
+        if row is None:
+            return None
+        return {'address': row[0], 'port': row[1], 'nickname': row[2], 'password': row[3]}
 
 
 class ServerDatabase(Database):
