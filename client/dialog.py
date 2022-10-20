@@ -5,6 +5,7 @@ from PyQt5.QtCore import QEvent
 from PyQt5.QtWidgets import QDialog, QStatusBar
 
 from shared.constants import ConnectionOptions, DEFAULT_IP, DEFAULT_PORT
+from server.db import ClientDatabase
 from client.ui.ConnectionDialog import Ui_ConnectionDialog
 from client.nickname import Ui_NicknameDialog
 
@@ -48,6 +49,15 @@ class ConnectionDialog(QDialog, Ui_ConnectionDialog):
 
         self.connect_button.setDisabled(True)
 
+        # Prefill with the last connection the user made, if any.
+        self.db = ClientDatabase()
+        last = self.db.last_connection()
+        if last is not None:
+            self.server_address_input.setText(last['address'])
+            self.port_input.setText(str(last['port']))
+            if not nickname:
+                nickname = last['nickname']
+
         if nickname:
             self.nickname_input.setText(nickname)
             self.validation()
@@ -66,6 +76,12 @@ class ConnectionDialog(QDialog, Ui_ConnectionDialog):
 
     def connect(self) -> None:
         self.connect_pressed = True
+        settings = self.settings
+        if settings.remember:
+            self.db.remember_connection(settings.ip, settings.port, settings.nickname,
+                                        settings.password or None)
+        else:
+            self.db.remember_connection(settings.ip, settings.port, settings.nickname)
         self.close()
 
     def event(self, event: QEvent) -> bool:
