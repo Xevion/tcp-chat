@@ -77,6 +77,14 @@ def formatted_message(message: dict) -> str:
            f'&lt;<span style="color: {message["color"]}">{nick_esc}</span>&gt; {msg_esc}'
 
 
+def tail(items, limit):
+    """Return at most the last `limit` items of a sequence (all of them if limit is None)."""
+    items = list(items)
+    if limit is None or len(items) <= limit:
+        return items
+    return items[len(items) - limit:]
+
+
 def sizeof_fmt(num, suffix='B'):
     for unit in ['', 'Ki', 'Mi', 'Gi', 'Ti', 'Pi', 'Ei', 'Zi']:
         if abs(num) < 1024.0:

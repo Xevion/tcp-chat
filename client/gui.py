@@ -135,7 +135,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         at_maximum = last_position == scrollbar.maximum()
 
         self.messageHistory.setText('<br>'.join(
-                msg['compiled'] for msg in self.messages
+                msg['compiled'] for msg in helpers.tail(self.messages, constants.MAX_SCROLLBACK)
         ))
 
         scrollbar.setValue(scrollbar.maximum() if at_maximum else last_position)

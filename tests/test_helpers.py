@@ -10,6 +10,13 @@ def test_prepare_json_round_trips():
     assert json.loads(body.decode('utf-8'))['content'] == 'hello'
 
 
+def test_tail_returns_the_last_items():
+    assert helpers.tail([1, 2, 3, 4, 5], 3) == [3, 4, 5]
+    assert helpers.tail([1, 2], 5) == [1, 2]
+    assert helpers.tail([1, 2, 3], None) == [1, 2, 3]
+    assert helpers.tail([1, 2, 3], 0) == []
+
+
 def test_sizeof_fmt_scales_units():
     assert helpers.sizeof_fmt(0).strip() == '0B'
     assert helpers.sizeof_fmt(1023).strip() == '1023B'
