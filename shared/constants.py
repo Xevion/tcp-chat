@@ -19,6 +19,11 @@ PING_TIMEOUT = 60  # Seconds of silence before the server gives up on a client
 
 MAX_SCROLLBACK = 200  # Most recent messages kept rendered in the chat box
 
+USE_TLS = False  # Opt-in TLS for the socket connection
+TLS_VERIFY = False  # Verify the server certificate (off allows self-signed certs)
+TLS_CERT = os.path.join(__BASE_DIR, 'cert.pem')
+TLS_KEY = os.path.join(__BASE_DIR, 'key.pem')
+
 ConnectionOptions = namedtuple('ConnectionOptions', ['ip', 'port', 'nickname', 'password', 'remember'])
 
 
