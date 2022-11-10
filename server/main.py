@@ -5,6 +5,7 @@ import threading
 
 from server import handler
 from shared import constants
+from shared import tls
 
 host = constants.DEFAULT_IP
 port = constants.DEFAULT_PORT
@@ -13,6 +14,8 @@ server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 server.bind((host, port))
 server.listen(1)
 server.settimeout(0.5)
+
+tls_context = tls.server_context(constants.TLS_CERT, constants.TLS_KEY) if constants.USE_TLS else None
 
 logger = logging.getLogger('server')
 logger.setLevel(logging.DEBUG)
@@ -29,6 +32,8 @@ def receive():
             try:
                 # Accept Connection
                 conn, address = server.accept()
+                if tls_context is not None:
+                    conn = tls_context.wrap_socket(conn, server_side=True)
                 logger.info(f"New connection from {address}")
 
                 client = handler.Client(conn, address, clients, lambda: stop_flag)
