@@ -8,6 +8,7 @@ from sortedcontainers import SortedList
 
 from shared import constants
 from shared import helpers
+from shared import tls
 from shared.backoff import backoff_delays
 from client.ui.MainWindow import Ui_MainWindow
 from client.worker import ReceiveWorker
@@ -32,9 +33,8 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self._reconnect_delays = None
 
         # Connect to server
-        self.client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        # TODO: Research more socket options, possibly improving client functionality
-        self.client.connect((ip, port))
+        if not self.open_socket():
+            raise ConnectionError(f'Could not connect to {ip}:{port}')
 
         # Setup message receiving thread worker
         self.start_worker()
@@ -54,10 +54,14 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.sent, self.received = 0, 0
 
     def open_socket(self) -> bool:
-        """Open a fresh connection to the server, returning whether it succeeded."""
+        """Open a fresh connection to the server, wrapping it in TLS when enabled."""
         try:
-            self.client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-            self.client.connect((self.ip, self.port))
+            sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            if constants.USE_TLS:
+                context = tls.client_context(verify=constants.TLS_VERIFY)
+                sock = context.wrap_socket(sock, server_hostname=self.ip)
+            sock.connect((self.ip, self.port))
+            self.client = sock
             return True
         except OSError:
             return False
