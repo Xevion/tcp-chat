@@ -128,7 +128,7 @@ class CommandHandler:
         :return:
         """
         if command is None:
-            return f"'help' requires 1 argument (command: str)."
+            return "'help' requires 1 argument (command: str)."
 
         if command in self.aliases.keys():
             command = self.aliases[command]

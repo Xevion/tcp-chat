@@ -42,7 +42,6 @@ class BaseClient(object):
 
     def send_message(self, message: str) -> None:
         """Sends a string message as the server to this client."""
-        # db.add_message('Server', 'server', constants.Colors.BLACK.hex, message, int(time.time()))
         self.conn.send(helpers.prepare_message(
                 nickname='Server', message=message, color=constants.Colors.BLACK.hex, message_id=-1
         ))
@@ -86,7 +85,6 @@ class Client(BaseClient):
         self.command = CommandHandler(self)
         self.first_seen = time.time()
         self.last_nickname_change = None
-        self.last_message_sent = None
         self.last_seen = time.time()
         self.last_ping = 0.0
 

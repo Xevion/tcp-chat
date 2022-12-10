@@ -4,7 +4,7 @@ import logging
 import os
 import sqlite3
 import threading
-from typing import List, Optional, Union
+from typing import List, Optional
 
 from shared import constants
 
@@ -32,7 +32,7 @@ class Database(abc.ABC):
         Closes the database connection and record it's connection status.
         """
         if self.__isClosed:
-            logger.warning(f'Database connection is already closed.', exc_info=True)
+            logger.warning('Database connection is already closed.', exc_info=True)
         else:
             self.conn.close()
             self.__isClosed = True
