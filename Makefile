@@ -7,6 +7,9 @@ run-server:
 run-client:
 	python launch.py c
 
+test:
+	pytest
+
 build:
 	pyinstaller --onefile launch.py -n tcp-chat --clean
 
