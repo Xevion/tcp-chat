@@ -22,4 +22,4 @@ if __name__ == "__main__":
             main(nick)
         elif str(sys.argv[1]).lower() in ['server', 's', '2']:
             from server import main
-            main.receive()
+            main.serve()

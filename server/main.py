@@ -7,27 +7,23 @@ from server import handler
 from shared import constants
 from shared import tls
 
-host = constants.DEFAULT_IP
-port = constants.DEFAULT_PORT
-
-server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-server.bind((host, port))
-server.listen(1)
-server.settimeout(0.5)
-
-tls_context = tls.server_context(constants.TLS_CERT, constants.TLS_KEY) if constants.USE_TLS else None
-
 logger = logging.getLogger('server')
 logger.setLevel(logging.DEBUG)
 
-clients = []
 
+def serve(host: str = constants.DEFAULT_IP, port: int = constants.DEFAULT_PORT, use_tls: bool = False) -> None:
+    """Bind to host/port and accept clients until interrupted."""
+    server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    server.bind((host, port))
+    server.listen(1)
+    server.settimeout(0.5)
 
-# Receiving / Listening Function
-def receive():
+    tls_context = tls.server_context(constants.TLS_CERT, constants.TLS_KEY) if use_tls else None
+
+    clients = []
     stop_flag: bool = False
     try:
-        logger.debug('Waiting for connections...')
+        logger.debug(f'Waiting for connections on {host}:{port}...')
         while True:
             try:
                 # Accept Connection
@@ -61,4 +57,4 @@ def receive():
 
 
 if __name__ == '__main__':
-    receive()
+    serve()
