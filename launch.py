@@ -1,25 +1,50 @@
 #!/usr/bin/env python3
-import sys
+import argparse
 
-from faker import Faker
+from shared import constants
+from shared.config import Config
 
-if __name__ == "__main__":
-    arg_count = len(sys.argv) - 1
-    if arg_count < 1:
-        print('Please provide one argument besides the file describing whether to launch the client or server.')
-        print('Client/C/1 to launch the client. Server/S/2 to launch the server.')
+
+def build_parser() -> argparse.ArgumentParser:
+    parser = argparse.ArgumentParser(prog='tcp-chat', description='A small TCP chat server and client.')
+    parser.add_argument('--config', default=None, help='Path to a TOML config file (default: tcp-chat.toml)')
+    sub = parser.add_subparsers(dest='role')
+    sub.required = True
+
+    server = sub.add_parser('server', aliases=['s', '2'], help='Run the chat server')
+    server.add_argument('--host', default=None)
+    server.add_argument('--port', type=int, default=None)
+    server.add_argument('--tls', action='store_true', default=None, help='Serve over TLS')
+
+    client = sub.add_parser('client', aliases=['c', '1'], help='Run the chat client')
+    client.add_argument('--host', default=None)
+    client.add_argument('--port', type=int, default=None)
+    client.add_argument('--nickname', default=None)
+    client.add_argument('--random', action='store_true', help='Use a random nickname')
+    client.add_argument('--tls', action='store_true', default=None, help='Connect over TLS')
+
+    return parser
+
+
+def main(argv=None) -> None:
+    args = build_parser().parse_args(argv)
+    config = Config.load(args.config) if args.config else Config.load()
+
+    if args.role in ('server', 's', '2'):
+        host = config.get('server', 'host', cli=args.host, default=constants.DEFAULT_IP)
+        port = config.get('server', 'port', cli=args.port, default=constants.DEFAULT_PORT)
+        use_tls = config.get('server', 'tls', cli=args.tls, default=constants.USE_TLS)
+        from server.main import serve
+        serve(host, port, use_tls)
     else:
-        if str(sys.argv[1]).lower() in ['client', 'c', '1']:
-            nick = None
-            if arg_count >= 2:
-                if sys.argv[2] == 'random':
-                    fake = Faker()
-                    nick = fake.user_name()
-                else:
-                    nick = sys.argv[2]
+        nickname = args.nickname
+        if args.random:
+            from faker import Faker
+            nickname = Faker().user_name()
+        nickname = config.get('client', 'nickname', cli=nickname, default=None)
+        from client.main import main as client_main
+        client_main(nickname)
 
-            from client.main import main
-            main(nick)
-        elif str(sys.argv[1]).lower() in ['server', 's', '2']:
-            from server import main
-            main.serve()
+
+if __name__ == '__main__':
+    main()
