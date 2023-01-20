@@ -42,8 +42,11 @@ def main(argv=None) -> None:
             from faker import Faker
             nickname = Faker().user_name()
         nickname = config.get('client', 'nickname', cli=nickname, default=None)
+        host = config.get('client', 'host', cli=args.host, default=constants.DEFAULT_IP)
+        port = config.get('client', 'port', cli=args.port, default=constants.DEFAULT_PORT)
+        use_tls = config.get('client', 'tls', cli=args.tls, default=constants.USE_TLS)
         from client.main import main as client_main
-        client_main(nickname)
+        client_main(nickname, host=host, port=port, use_tls=use_tls)
 
 
 if __name__ == '__main__':

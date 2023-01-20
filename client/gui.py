@@ -22,13 +22,14 @@ logger.setLevel(logging.DEBUG)
 
 
 class MainWindow(QMainWindow, Ui_MainWindow):
-    def __init__(self, ip: str, port: int, nickname: str, *args, **kwargs):
+    def __init__(self, ip: str, port: int, nickname: str, use_tls: bool = False, *args, **kwargs):
         # Initial UI setup
         super(MainWindow, self).__init__(*args, **kwargs)
         self.setupUi(self)
         self.show()
 
         self.ip, self.port, self.nickname = ip, port, nickname
+        self.use_tls = use_tls
         self.closed = False
         self._reconnect_delays = None
 
@@ -57,7 +58,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         """Open a fresh connection to the server, wrapping it in TLS when enabled."""
         try:
             sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-            if constants.USE_TLS:
+            if self.use_tls:
                 context = tls.client_context(verify=constants.TLS_VERIFY)
                 sock = context.wrap_socket(sock, server_hostname=self.ip)
             sock.connect((self.ip, self.port))

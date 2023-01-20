@@ -43,7 +43,7 @@ class NicknameDialog(QDialog, Ui_NicknameDialog):
 
 
 class ConnectionDialog(QDialog, Ui_ConnectionDialog):
-    def __init__(self, nickname: str = None, *args, **kwargs):
+    def __init__(self, nickname: str = None, host: str = None, port: int = None, *args, **kwargs):
         super(ConnectionDialog, self).__init__(*args, **kwargs)
         self.setupUi(self)
 
@@ -57,6 +57,12 @@ class ConnectionDialog(QDialog, Ui_ConnectionDialog):
             self.port_input.setText(str(last['port']))
             if not nickname:
                 nickname = last['nickname']
+
+        # CLI/config values override the remembered connection.
+        if host is not None:
+            self.server_address_input.setText(host)
+        if port is not None:
+            self.port_input.setText(str(port))
 
         if nickname:
             self.nickname_input.setText(nickname)

@@ -7,6 +7,7 @@ def bare_window(ip, port):
     # Bypass __init__ so we can exercise open_socket without a Qt event loop.
     window = MainWindow.__new__(MainWindow)
     window.ip, window.port = ip, port
+    window.use_tls = False
     return window
 
 
