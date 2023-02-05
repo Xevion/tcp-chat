@@ -1,0 +1,12 @@
+# Copy to tcp-chat.toml and adjust. Command-line flags override these values.
+
+[server]
+host = "127.0.0.1"
+port = 5555
+tls = false
+
+[client]
+host = "127.0.0.1"
+port = 5555
+# nickname = "yourname"
+tls = false
