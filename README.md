@@ -14,8 +14,24 @@ pipenv install
 
 ## Usage
 
+Run the server or client through `launch.py` (`server`/`client` also accept `s`/`c`):
+
 ```bash
-python launch.py [c | s | server | client]
+python launch.py server                            # listen on the defaults
+python launch.py client --random                   # connect with a random nickname
+python launch.py server --host 0.0.0.0 --port 6000 --tls
+```
+
+With the environment active the script is executable directly: `./launch.py server`.
+See `python launch.py --help` for all options.
+
+## Configuration
+
+Settings resolve in order: command-line flag, then `tcp-chat.toml`, then the built-in
+default. Copy the sample to get started:
+
+```bash
+cp tcp-chat.toml.example tcp-chat.toml
 ```
 
 ## Commands
@@ -29,12 +45,14 @@ Sent as ordinary messages, parsed by the server:
 
 ## TLS
 
-Off by default. Set `USE_TLS = True` in `shared/constants.py` and point `TLS_CERT` /
-`TLS_KEY` at a certificate and key. A self-signed cert works with `TLS_VERIFY = False`:
+Off by default. Generate a self-signed development certificate:
 
 ```bash
-openssl req -x509 -newkey rsa:2048 -nodes -keyout shared/key.pem -out shared/cert.pem -days 365 -subj /CN=localhost
+make cert
 ```
+
+Then enable it with `--tls` (or `tls = true` in `tcp-chat.toml`) on both ends. The
+client accepts self-signed certificates while `TLS_VERIFY` is false.
 
 ## Testing
 
