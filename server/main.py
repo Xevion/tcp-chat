@@ -26,8 +26,13 @@ def serve(host: str = constants.DEFAULT_IP, port: int = constants.DEFAULT_PORT, 
         logger.debug(f'Waiting for connections on {host}:{port}...')
         while True:
             try:
-                # Accept Connection
                 conn, address = server.accept()
+            except socket.timeout:
+                continue
+
+            # A single client's setup failing (e.g. a TLS/plaintext mismatch) must not
+            # take down the whole server, so isolate it from the accept loop.
+            try:
                 if tls_context is not None:
                     conn = tls_context.wrap_socket(conn, server_side=True)
                 logger.info(f"New connection from {address}")
@@ -43,13 +48,12 @@ def serve(host: str = constants.DEFAULT_IP, port: int = constants.DEFAULT_PORT, 
                 # Start Handling Thread For Client
                 thread = threading.Thread(target=client.handle, name=client.id[:8])
                 thread.start()
-            except socket.timeout:
-                pass
-            except KeyboardInterrupt as e:
-                raise e
             except Exception as e:
-                logger.critical(e, exc_info=e)
-                break
+                logger.warning(f'Dropping connection from {address}: {e}')
+                try:
+                    conn.close()
+                except OSError:
+                    pass
     except KeyboardInterrupt:
         logger.info('User stopped server manually. Enabling stop flag.')
         stop_flag = True
