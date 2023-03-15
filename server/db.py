@@ -82,14 +82,52 @@ class ClientDatabase(Database):
         with lock:
             cur = self.conn.cursor()
             try:
-                cur.execute('''SELECT address, port, nickname, password FROM connection
+                cur.execute('''SELECT address, port, nickname, password, favorite FROM connection
                             ORDER BY latest_time DESC LIMIT 1''')
                 row = cur.fetchone()
             finally:
                 cur.close()
+        return self._as_connection(row)
+
+    def recent_connections(self, limit: int = 10) -> List[dict]:
+        """Return stored connections, most recently used first."""
+        with lock:
+            cur = self.conn.cursor()
+            try:
+                cur.execute('''SELECT address, port, nickname, password, favorite FROM connection
+                            ORDER BY latest_time DESC LIMIT ?''', [limit])
+                rows = cur.fetchall()
+            finally:
+                cur.close()
+        return [self._as_connection(row) for row in rows]
+
+    def favorite_connections(self) -> List[dict]:
+        """Return the connections the user has starred, most recently used first."""
+        with lock:
+            cur = self.conn.cursor()
+            try:
+                cur.execute('''SELECT address, port, nickname, password, favorite FROM connection
+                            WHERE favorite = 1 ORDER BY latest_time DESC''')
+                rows = cur.fetchall()
+            finally:
+                cur.close()
+        return [self._as_connection(row) for row in rows]
+
+    def set_favorite(self, address: str, port: int, nickname: str, favorite: bool = True) -> None:
+        """Flag or unflag a stored connection as a favorite."""
+        with lock:
+            with self.conn:
+                self.conn.execute('UPDATE connection SET favorite = ? '
+                                  'WHERE address = ? AND port = ? AND nickname = ?',
+                                  [1 if favorite else 0, address, port, nickname])
+
+    @staticmethod
+    def _as_connection(row) -> Optional[dict]:
+        """Turn a (address, port, nickname, password, favorite) row into a dict."""
         if row is None:
             return None
-        return {'address': row[0], 'port': row[1], 'nickname': row[2], 'password': row[3]}
+        return {'address': row[0], 'port': row[1], 'nickname': row[2],
+                'password': row[3], 'favorite': bool(row[4])}
 
 
 class ServerDatabase(Database):
