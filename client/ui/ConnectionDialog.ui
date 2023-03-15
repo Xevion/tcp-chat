@@ -130,7 +130,7 @@
         <number>7</number>
        </property>
        <item row="0" column="0">
-        <widget class="QListView" name="recent_connections_list">
+        <widget class="QListWidget" name="recent_connections_list">
          <property name="sizePolicy">
           <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
            <horstretch>0</horstretch>
@@ -228,6 +228,16 @@
           </property>
           <property name="text">
            <string>Remember</string>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QCheckBox" name="tls_checkbox">
+          <property name="statusTip">
+           <string>Encrypt the connection with TLS. The server must be started with TLS too.</string>
+          </property>
+          <property name="text">
+           <string>TLS</string>
           </property>
          </widget>
         </item>
