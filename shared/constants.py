@@ -24,7 +24,8 @@ TLS_VERIFY = False  # Verify the server certificate (off allows self-signed cert
 TLS_CERT = os.path.join(__BASE_DIR, 'cert.pem')
 TLS_KEY = os.path.join(__BASE_DIR, 'key.pem')
 
-ConnectionOptions = namedtuple('ConnectionOptions', ['ip', 'port', 'nickname', 'password', 'remember'])
+ConnectionOptions = namedtuple('ConnectionOptions', ['ip', 'port', 'nickname', 'password', 'remember', 'tls'])
+ConnectionOptions.__new__.__defaults__ = (False,)  # tls defaults off
 
 
 class Types:
