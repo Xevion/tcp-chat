@@ -52,7 +52,14 @@ make cert
 ```
 
 Then enable it with `--tls` (or `tls = true` in `tcp-chat.toml`) on both ends. The
-client accepts self-signed certificates while `TLS_VERIFY` is false.
+GUI client also has a TLS checkbox in the connection dialog. The client accepts
+self-signed certificates while `TLS_VERIFY` is false.
+
+## Connecting
+
+The connection dialog remembers servers you have used. The Recent tab lists them
+newest-first; right-click one to star it onto the Favorites tab. Click any entry to
+fill the form, and use Test Connection to check a server is reachable before joining.
 
 ## Testing
 
