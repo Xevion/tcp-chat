@@ -13,9 +13,6 @@ from shared.backoff import backoff_delays
 from client.ui.MainWindow import Ui_MainWindow
 from client.worker import ReceiveWorker
 
-IP = '127.0.0.1'
-PORT = 55555
-
 logging.basicConfig(format='[%(asctime)s] [%(levelname)s] [%(threadName)s] %(message)s')
 logger = logging.getLogger('gui')
 logger.setLevel(logging.DEBUG)
