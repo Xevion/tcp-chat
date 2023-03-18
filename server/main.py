@@ -32,6 +32,7 @@ def serve(host: str = constants.DEFAULT_IP, port: int = constants.DEFAULT_PORT, 
 
             # A single client's setup failing (e.g. a TLS/plaintext mismatch) must not
             # take down the whole server, so isolate it from the accept loop.
+            client = None
             try:
                 if tls_context is not None:
                     conn = tls_context.wrap_socket(conn, server_side=True)
@@ -50,10 +51,15 @@ def serve(host: str = constants.DEFAULT_IP, port: int = constants.DEFAULT_PORT, 
                 thread.start()
             except Exception as e:
                 logger.warning(f'Dropping connection from {address}: {e}')
-                try:
-                    conn.close()
-                except OSError:
-                    pass
+                # Don't leave a half-set-up client in the list; a closed socket there
+                # would break every later broadcast with a bad file descriptor.
+                if client is not None:
+                    client.discard()
+                else:
+                    try:
+                        conn.close()
+                    except OSError:
+                        pass
     except KeyboardInterrupt:
         logger.info('User stopped server manually. Enabling stop flag.')
         stop_flag = True
