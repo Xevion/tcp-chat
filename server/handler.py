@@ -40,6 +40,31 @@ class BaseClient(object):
         """Sends a pre-encoded message to this client."""
         self.conn.send(message)
 
+    def _fan_out(self, members, message: bytes) -> None:
+        """Send a pre-encoded message to several clients, pruning any that error.
+
+        A single unreachable recipient (a socket that has been closed out from
+        under us) must not abort delivery to everyone else, nor linger in the
+        connection list where it would break every later broadcast.
+        """
+        for member in list(members):
+            try:
+                member.send(message)
+            except OSError as e:
+                logger.warning(f'Pruning unreachable client {member!r}: {e}')
+                member.discard()
+
+    def discard(self) -> None:
+        """Drop this client from the shared list and close its socket, quietly."""
+        try:
+            self.all_clients.remove(self)
+        except ValueError:
+            pass
+        try:
+            self.conn.close()
+        except OSError:
+            pass
+
     def send_message(self, message: str) -> None:
         """Sends a string message as the server to this client."""
         self.conn.send(helpers.prepare_message(
@@ -54,13 +79,11 @@ class BaseClient(object):
                 nickname='Server', message=message, color=constants.Colors.BLACK.hex, message_id=message_id,
                 timestamp=timestamp
         )
-        for client in rooms.members_in(self.all_clients, getattr(self, 'room', constants.DEFAULT_ROOM)):
-            client.send(prepared)
+        self._fan_out(rooms.members_in(self.all_clients, getattr(self, 'room', constants.DEFAULT_ROOM)), prepared)
 
     def broadcast(self, message: bytes) -> None:
         """Sends a pre-encoded message to all clients in the sender's room"""
-        for client in rooms.members_in(self.all_clients, getattr(self, 'room', constants.DEFAULT_ROOM)):
-            client.send(message)
+        self._fan_out(rooms.members_in(self.all_clients, getattr(self, 'room', constants.DEFAULT_ROOM)), message)
 
     def __repr__(self) -> str:
         return f'BaseClient({self.address})'
@@ -119,9 +142,7 @@ class Client(BaseClient):
 
     def notify_room(self, room: str) -> None:
         """Send every member of `room` a refreshed user list."""
-        payload = self._room_user_list(room)
-        for member in rooms.members_in(self.all_clients, room):
-            member.send(payload)
+        self._fan_out(rooms.members_in(self.all_clients, room), self._room_user_list(room))
 
     def send_message_history(self, limit: int, time_limit: int) -> None:
         limit = min(100, max(0, limit))
@@ -213,12 +234,15 @@ class Client(BaseClient):
 
     def close(self) -> None:
         logger.info(f'Shutting down Client {self.id}. ({self.nickname})')
+        already_gone = self not in self.all_clients  # may already have been pruned
         self.conn.close()  # Close socket connection
-        self.all_clients.remove(self)  # Remove the user from the global client list
+        if not already_gone:
+            self.all_clients.remove(self)  # Remove the user from the global client list
         self.broadcast_message(f'{self.nickname} left!')  # Now we can broadcast it's exit message
         # Inform the room's remaining members of the disconnect
         self.notify_room(self.room)
-        self.db.close()  # Close database connection
+        if self.db is not None:
+            self.db.close()  # Close database connection
 
     def handle(self) -> None:
         """Server mainloop function for a given socket connection"""

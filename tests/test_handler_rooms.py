@@ -40,3 +40,28 @@ def test_notify_room_reaches_every_member_of_that_room():
     # carol is in another room and must not receive the general user list
     with pytest.raises(socket.timeout):
         protocol.read_message(carol_peer)
+
+
+def test_notify_room_survives_and_prunes_a_dead_member():
+    clients = []
+    alice, alice_peer = make_client(clients, 'alice', room='general')
+    zombie, _ = make_client(clients, 'zombie', room='general')
+    zombie.conn.close()  # server-side fd is gone; sending to it raises EBADF
+
+    # A dead recipient must not abort delivery to the rest of the room.
+    alice.notify_room('general')
+    assert 'alice' in {u['nickname'] for u in protocol.read_message(alice_peer)['users']}
+
+    # ...and the unreachable client should be pruned from the connection list.
+    assert zombie not in clients
+
+
+def test_broadcast_survives_and_prunes_a_dead_member():
+    clients = []
+    alice, alice_peer = make_client(clients, 'alice', room='general')
+    zombie, _ = make_client(clients, 'zombie', room='general')
+    zombie.conn.close()
+
+    alice.broadcast(protocol.encode({'type': 'MESSAGE', 'content': 'hi'}))
+    assert protocol.read_message(alice_peer)['content'] == 'hi'
+    assert zombie not in clients
