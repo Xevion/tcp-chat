@@ -29,6 +29,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.use_tls = use_tls
         self.closed = False
         self._reconnect_delays = None
+        self._stability_timer = None
 
         # Connect to server
         if not self.open_socket():
@@ -73,14 +74,22 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.receiveThread.data_stats.connect(self.count_stats)  # Receiving data usage stats
         self.receiveThread.error.connect(self.on_connection_lost)  # Reconnect when the socket drops
         self.receiveThread.start()
+        # Treat the link as healthy once it survives a few seconds, resetting the
+        # backoff so a later, unrelated drop starts its own fresh sequence.
+        self._arm_stability_timer()
 
     def on_connection_lost(self) -> None:
-        """Begin a backoff-driven reconnect after the worker reports a dropped socket."""
+        """Schedule a backoff-driven reconnect after the worker reports a dropped socket."""
         if self.closed:
             return
-        self.status_bar.showMessage('Connection lost, reconnecting...')
-        self._reconnect_delays = backoff_delays()
-        self.try_reconnect()
+        self._cancel_stability_timer()
+        # Keep advancing the existing backoff; resetting it on every drop turns a
+        # connection that flaps immediately into a tight reconnect loop.
+        if self._reconnect_delays is None:
+            self._reconnect_delays = backoff_delays()
+        delay = next(self._reconnect_delays)
+        self.status_bar.showMessage(f'Connection lost, reconnecting in {delay:.0f}s...')
+        QTimer.singleShot(int(delay * 1000), self.try_reconnect)
 
     def try_reconnect(self) -> None:
         """Attempt a single reconnect, rescheduling itself with backoff on failure."""
@@ -92,6 +101,21 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         else:
             delay = next(self._reconnect_delays)
             QTimer.singleShot(int(delay * 1000), self.try_reconnect)
+
+    def _arm_stability_timer(self) -> None:
+        self._cancel_stability_timer()
+        self._stability_timer = QTimer(self)
+        self._stability_timer.setSingleShot(True)
+        self._stability_timer.timeout.connect(self._mark_connection_stable)
+        self._stability_timer.start(5000)
+
+    def _cancel_stability_timer(self) -> None:
+        if self._stability_timer is not None:
+            self._stability_timer.stop()
+            self._stability_timer = None
+
+    def _mark_connection_stable(self) -> None:
+        self._reconnect_delays = None
 
     def count_stats(self, sent: bool, change: int) -> None:
         """Handler for counting data statistics."""
