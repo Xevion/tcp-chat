@@ -1,14 +1,10 @@
-import shutil
 import socket
-import subprocess
 import threading
 import time
 
-import pytest
-
 from shared import constants
+from shared import handshake
 from shared import protocol
-from shared import tls
 
 
 def test_importing_server_main_does_not_bind_a_port():
@@ -25,20 +21,6 @@ def test_importing_server_main_does_not_bind_a_port():
 def test_serve_is_callable():
     from server.main import serve
     assert callable(serve)
-
-
-@pytest.fixture
-def self_signed(tmp_path):
-    openssl = shutil.which('openssl')
-    if openssl is None:
-        pytest.skip('openssl is not available to generate a test certificate')
-    cert, key = tmp_path / 'cert.pem', tmp_path / 'key.pem'
-    subprocess.run(
-        [openssl, 'req', '-x509', '-newkey', 'rsa:2048', '-nodes',
-         '-keyout', str(key), '-out', str(cert), '-days', '1', '-subj', '/CN=localhost'],
-        check=True, capture_output=True,
-    )
-    return str(cert), str(key)
 
 
 def _wait_until_listening(host, port, deadline=5.0):
@@ -65,19 +47,19 @@ def test_serve_survives_a_bad_handshake(self_signed, monkeypatch):
     thread.start()
     _wait_until_listening(host, port)
 
-    # A plaintext client against the TLS listener fails the handshake server-side.
+    # Garbage in place of a HELLO fails the handshake server-side.
     bad = socket.create_connection((host, port))
     bad.sendall(b'not a tls hello\n')
     bad.close()
     time.sleep(0.2)
 
-    # The server must still be alive and serving a proper TLS client.
-    client = tls.client_context(verify=False).wrap_socket(
-        socket.socket(socket.AF_INET, socket.SOCK_STREAM), server_hostname='localhost')
-    client.connect((host, port))
-    client.settimeout(5)
-    message = protocol.read_message(client)
-    client.close()
+    # The server must still be alive and serving a proper negotiated TLS client.
+    raw = socket.create_connection((host, port))
+    result = handshake.negotiate_client(raw, want_tls=True, version=protocol.PROTOCOL_VERSION,
+                                        verify=False, server_hostname='localhost')
+    assert result.ok
+    message = protocol.read_message(result.sock)
+    result.sock.close()
 
     assert thread.is_alive()
     assert message['type'] == constants.Types.REQUEST

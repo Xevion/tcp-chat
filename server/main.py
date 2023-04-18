@@ -5,25 +5,24 @@ import threading
 
 from server import handler
 from shared import constants
-from shared import tls
+from shared import handshake
+from shared import protocol
 
 logger = logging.getLogger('server')
-logger.setLevel(logging.DEBUG)
 
 
 def serve(host: str = constants.DEFAULT_IP, port: int = constants.DEFAULT_PORT, use_tls: bool = False) -> None:
     """Bind to host/port and accept clients until interrupted."""
     server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    server.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)  # restart without waiting on TIME_WAIT
     server.bind((host, port))
     server.listen(1)
     server.settimeout(0.5)
 
-    tls_context = tls.server_context(constants.TLS_CERT, constants.TLS_KEY) if use_tls else None
-
     clients = []
     stop_flag: bool = False
     try:
-        logger.debug(f'Waiting for connections on {host}:{port}...')
+        logger.info(f'Waiting for connections on {host}:{port}...')
         while True:
             try:
                 conn, address = server.accept()
@@ -34,9 +33,22 @@ def serve(host: str = constants.DEFAULT_IP, port: int = constants.DEFAULT_PORT, 
             # take down the whole server, so isolate it from the accept loop.
             client = None
             try:
-                if tls_context is not None:
-                    conn = tls_context.wrap_socket(conn, server_side=True)
                 logger.info(f"New connection from {address}")
+
+                # Negotiate version and TLS in cleartext before anything else; a
+                # mismatch is answered with a stated rejection, not a silent drop.
+                negotiation = handshake.negotiate_server(
+                    conn, require_tls=use_tls, supports_tls=use_tls,
+                    version=protocol.PROTOCOL_VERSION,
+                    certfile=constants.TLS_CERT, keyfile=constants.TLS_KEY)
+                if not negotiation.ok:
+                    logger.warning(f'Rejected connection from {address}: {negotiation.reason}')
+                    try:
+                        conn.close()
+                    except OSError:
+                        pass
+                    continue
+                conn = negotiation.sock
 
                 client = handler.Client(conn, address, clients, lambda: stop_flag)
                 clients.append(client)
