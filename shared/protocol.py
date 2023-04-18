@@ -13,8 +13,8 @@ HEADER_LENGTH = 10
 
 # Bumped whenever the message envelope changes in a way that isn't backwards
 # compatible. Stamped onto every outgoing dict frame so both ends can tell which
-# revision they are talking to.
-PROTOCOL_VERSION = 1
+# revision they are talking to. v2 added the cleartext connection handshake.
+PROTOCOL_VERSION = 2
 
 
 def encode(obj: Any) -> bytes:

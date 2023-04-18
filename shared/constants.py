@@ -42,6 +42,9 @@ class Types:
     PING = 'PING'  # Keep-alive probe; the receiver replies with a PONG
     PONG = 'PONG'  # Reply to a PING, proving the connection is still alive
     QUIT = 'QUIT'  # Sent by a client that is disconnecting on purpose
+    HELLO = 'HELLO'  # Opening frame: client's protocol version and TLS intent
+    WELCOME = 'WELCOME'  # Server accepts the client, telling it whether to upgrade to TLS
+    REJECT = 'REJECT'  # Server refuses the client, with a human-readable reason
 
 
 class Requests:
