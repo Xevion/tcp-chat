@@ -8,14 +8,13 @@ from sortedcontainers import SortedList
 
 from shared import constants
 from shared import helpers
-from shared import tls
+from shared import handshake
+from shared import protocol
 from shared.backoff import backoff_delays
 from client.ui.MainWindow import Ui_MainWindow
 from client.worker import ReceiveWorker
 
-logging.basicConfig(format='[%(asctime)s] [%(levelname)s] [%(threadName)s] %(message)s')
 logger = logging.getLogger('gui')
-logger.setLevel(logging.DEBUG)
 
 
 class MainWindow(QMainWindow, Ui_MainWindow):
@@ -30,10 +29,12 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.closed = False
         self._reconnect_delays = None
         self._stability_timer = None
+        self._connect_reason = ''
+        self._connect_permanent = False
 
         # Connect to server
         if not self.open_socket():
-            raise ConnectionError(f'Could not connect to {ip}:{port}')
+            raise ConnectionError(self._connect_reason or f'Could not connect to {ip}:{port}')
 
         # Setup message receiving thread worker
         self.start_worker()
@@ -53,17 +54,33 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.sent, self.received = 0, 0
 
     def open_socket(self) -> bool:
-        """Open a fresh connection to the server, wrapping it in TLS when enabled."""
+        """Open a fresh connection and run the handshake, negotiating TLS if enabled.
+
+        On failure, records the reason and whether it is permanent (a stated
+        server rejection, which retrying won't fix) versus transient (a network
+        drop, which might recover) so the caller can decide whether to back off.
+        """
         try:
             sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-            if self.use_tls:
-                context = tls.client_context(verify=constants.TLS_VERIFY)
-                sock = context.wrap_socket(sock, server_hostname=self.ip)
             sock.connect((self.ip, self.port))
-            self.client = sock
-            return True
-        except OSError:
+        except OSError as e:
+            self._connect_reason, self._connect_permanent = str(e), False
             return False
+
+        result = handshake.negotiate_client(
+            sock, want_tls=self.use_tls, version=protocol.PROTOCOL_VERSION,
+            verify=constants.TLS_VERIFY, server_hostname=self.ip)
+        if not result.ok:
+            self._connect_reason, self._connect_permanent = result.reason, result.rejected
+            try:
+                sock.close()
+            except OSError:
+                pass
+            return False
+
+        self.client = result.sock
+        self._connect_reason, self._connect_permanent = '', False
+        return True
 
     def start_worker(self) -> None:
         """Spin up a receive worker bound to the current socket and wire its signals."""
@@ -98,6 +115,9 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         if self.open_socket():
             self.status_bar.showMessage('Reconnected.', 3000)
             self.start_worker()
+        elif self._connect_permanent:
+            # The server stated why it refused us; reconnecting can't fix that.
+            self.status_bar.showMessage(f'Cannot reconnect: {self._connect_reason}')
         else:
             delay = next(self._reconnect_delays)
             QTimer.singleShot(int(delay * 1000), self.try_reconnect)
