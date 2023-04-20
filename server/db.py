@@ -9,7 +9,6 @@ from typing import List, Optional
 from shared import constants
 
 logger = logging.getLogger('database')
-logger.setLevel(logging.DEBUG)
 
 lock = threading.Lock()
 

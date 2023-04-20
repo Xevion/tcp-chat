@@ -1,13 +1,17 @@
 #!/usr/bin/env python3
 import argparse
+import logging
 
 from shared import constants
+from shared import logging_config
 from shared.config import Config
 
 
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog='tcp-chat', description='A small TCP chat server and client.')
     parser.add_argument('--config', default=None, help='Path to a TOML config file (default: tcp-chat.toml)')
+    parser.add_argument('-v', '--verbose', action='store_true', help='Log at DEBUG instead of INFO')
+    parser.add_argument('--log-file', default=None, help='Also write logs to this file')
     sub = parser.add_subparsers(dest='role')
     sub.required = True
 
@@ -28,6 +32,8 @@ def build_parser() -> argparse.ArgumentParser:
 
 def main(argv=None) -> None:
     args = build_parser().parse_args(argv)
+    logging_config.configure(level=logging.DEBUG if args.verbose else logging.INFO,
+                             logfile=args.log_file)
     config = Config.load(args.config) if args.config else Config.load()
 
     if args.role in ('server', 's', '2'):

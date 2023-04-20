@@ -12,7 +12,6 @@ if TYPE_CHECKING:
     from server.handler import Client
 
 logger = logging.getLogger('commands')
-logger.setLevel(logging.DEBUG)
 
 
 class CommandHandler:

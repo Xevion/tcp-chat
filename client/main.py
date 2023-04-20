@@ -6,7 +6,7 @@ from client.dialog import ConnectionDialog
 from client.gui import MainWindow
 from client import theme
 
-logger = logging.getLogger(__file__)
+logger = logging.getLogger(__name__)
 
 
 def main(nickname: str = None, host: str = None, port: int = None, use_tls: bool = None):

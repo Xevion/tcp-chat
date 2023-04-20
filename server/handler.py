@@ -18,7 +18,6 @@ from server import resilience
 from server.commands import CommandHandler
 
 logger = logging.getLogger('handler')
-logger.setLevel(logging.DEBUG)
 
 
 class BaseClient(object):
