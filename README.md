@@ -23,7 +23,8 @@ python launch.py server --host 0.0.0.0 --port 6000 --tls
 ```
 
 With the environment active the script is executable directly: `./launch.py server`.
-See `python launch.py --help` for all options.
+See `python launch.py --help` for all options. Add `-v` for debug logging or
+`--log-file PATH` to also write logs to a file.
 
 ## Configuration
 
@@ -54,6 +55,11 @@ make cert
 Then enable it with `--tls` (or `tls = true` in `tcp-chat.toml`) on both ends. The
 GUI client also has a TLS checkbox in the connection dialog. The client accepts
 self-signed certificates while `TLS_VERIFY` is false.
+
+Client and server negotiate TLS (and the protocol version) in a short cleartext
+handshake before any connection is established, so a mismatch — connecting without
+TLS to a TLS-only server, say — is reported plainly ("server requires TLS") instead
+of failing with an opaque socket error.
 
 ## Connecting
 
