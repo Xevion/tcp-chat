@@ -216,6 +216,21 @@ class Client(BaseClient):
         # New nickname has to be sent to everyone sharing the room
         self.notify_room(self.room)
 
+    def process_command(self, content: str) -> None:
+        """Parse a slash-prefixed message and run it, broadcasting any reply.
+
+        A bare '/' (or one followed by only whitespace) carries no command name,
+        so it is left as ordinary text rather than dispatched -- splitting it
+        yields no arguments and indexing the command name would otherwise raise.
+        """
+        args = content[1:].strip().split()
+        if not args:
+            return
+        args[0] = args[0].lower()  # Command name will always be perceived as lowercase
+        msg = self.command.process(args)
+        if msg is not None:
+            self.broadcast_message(msg)
+
     def heartbeat(self) -> None:
         """Probe a quiet client with a PING, or drop one that has gone silent too long."""
         now = time.time()
@@ -280,13 +295,8 @@ class Client(BaseClient):
                     ))
 
                     # Process commands
-                    command = data['content'].strip()
-                    if command.startswith('/'):
-                        args = data['content'][1:].strip().split()
-                        args[0] = args[0].lower()  # Command name will always be perceived as lowercase
-                        msg = self.command.process(args)
-                        if msg is not None:
-                            self.broadcast_message(msg)
+                    if data['content'].strip().startswith('/'):
+                        self.process_command(data['content'])
             except DataReceptionException as e:
                 logger.critical(e)
                 logger.warning('Aborting connection to the client.')
