@@ -32,14 +32,16 @@ class HandshakeResult(NamedTuple):
 
 
 def negotiate_client(sock: socket.socket, want_tls: bool, version: int,
-                     verify: bool = False, server_hostname: str = None) -> HandshakeResult:
+                     verify: bool = False, server_hostname: str = None,
+                     timeout: float = HANDSHAKE_TIMEOUT) -> HandshakeResult:
     """Run the client side of the handshake, returning the (maybe upgraded) socket.
 
     Never raises: a refusal or transport error comes back as ``ok=False`` with a
-    human-readable ``reason``.
+    human-readable ``reason``. A shorter ``timeout`` keeps a reachability probe
+    from blocking for the full handshake window on an unresponsive peer.
     """
     previous_timeout = sock.gettimeout()
-    sock.settimeout(HANDSHAKE_TIMEOUT)
+    sock.settimeout(timeout)
     try:
         sock.sendall(protocol.encode(
             {'type': constants.Types.HELLO, 'version': version, 'tls': bool(want_tls)}))
