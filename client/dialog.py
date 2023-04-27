@@ -5,7 +5,7 @@ from PyQt5.QtCore import QEvent, Qt, QThread, pyqtSignal
 from PyQt5.QtWidgets import QDialog, QStatusBar, QListWidgetItem, QMenu
 
 from shared.constants import ConnectionOptions, DEFAULT_IP, DEFAULT_PORT
-from shared.probe import probe_connection
+from client.core import probe
 from server.db import ClientDatabase
 from client.ui.ConnectionDialog import Ui_ConnectionDialog
 from client.nickname import Ui_NicknameDialog
@@ -20,7 +20,7 @@ class ProbeWorker(QThread):
         self.host, self.port, self.use_tls = host, port, use_tls
 
     def run(self):
-        outcome = probe_connection(self.host, self.port, use_tls=self.use_tls)
+        outcome = probe(self.host, self.port, use_tls=self.use_tls)
         self.result.emit(outcome.ok, outcome.detail)
 
 
