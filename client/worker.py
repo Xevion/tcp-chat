@@ -1,101 +1,27 @@
-import json
-import logging
-import socket
-
 from PyQt5.QtCore import QThread, pyqtSignal
 
-from shared import constants
-from shared import helpers
-from shared import protocol
+from client.core import ClientCore
 
 
 class ReceiveWorker(QThread):
-    messages = pyqtSignal(dict)
-    client_list = pyqtSignal(list)
-    error = pyqtSignal()
-    sent_nick = pyqtSignal()
-    logs = pyqtSignal(dict)
-    data_stats = pyqtSignal(bool, int)  # bool: True if sent stats change, False if received stats change
+    """Pump the Qt-free core's event stream onto the Qt event loop as a signal.
 
-    def __init__(self, client: socket.socket, nickname: str, parent=None):
+    All the socket and protocol work lives in the core; this thread only carries
+    each :class:`client.core.Event` across to the GUI thread, so there is nothing
+    here to keep in sync with the connection logic.
+    """
+    event = pyqtSignal(object)
+
+    def __init__(self, core: ClientCore, parent=None):
         QThread.__init__(self, parent)
-        self.client = client
-        self.nickname = nickname
-        self.__isRunning = True
+        self.core = core
+        self._running = True
 
     def stop(self) -> None:
-        self.__isRunning = False
-
-    @staticmethod
-    def __extract_message(data) -> dict:
-        return {
-            'nickname': data['nickname'],
-            'message': data['content'],
-            'color': data['color'],
-            'time': data['time'],
-            'id': data['id']
-        }
-
-    def log(self, message: str, level: int = logging.INFO, error: Exception = None):
-        """Send a log message out from this QThread to the MainThread"""
-        self.logs.emit(
-            {
-                'message': message,
-                'level': level,
-                'error': error
-            }
-        )
-
-    def send(self, data: bytes, **kwargs) -> None:
-        self.data_stats.emit(True, len(data))
-        self.client.send(data, **kwargs)
-
-    def handle_message(self, message: dict) -> None:
-        """Dispatch a single decoded message from the server."""
-        if message['type'] == constants.Types.REQUEST:
-            if message['request'] == constants.Requests.REQUEST_NICK:
-                self.send(helpers.prepare_json(
-                    {
-                        'type': constants.Types.NICKNAME,
-                        'nickname': self.nickname
-                    }
-                ))
-                self.sent_nick.emit()
-        elif message['type'] == constants.Types.PING:
-            self.send(helpers.prepare_pong())
-        elif message['type'] == constants.Types.MESSAGE:
-            self.messages.emit(self.__extract_message(message))
-        elif message['type'] == constants.Types.USER_LIST:
-            self.client_list.emit(message['users'])
-        elif message['type'] == constants.Types.MESSAGE_HISTORY:
-            for submessage in message['messages']:
-                self.messages.emit(self.__extract_message(submessage))
+        self._running = False
 
     def run(self):
-        try:
-            while self.__isRunning:
-                try:
-                    # Receive the header, then exactly the body length it describes
-                    raw_header = protocol.recv_exact(self.client, protocol.HEADER_LENGTH)
-                    length = int(raw_header.decode('utf-8'))
-
-                    raw_data = protocol.recv_exact(self.client, length)
-                    message = json.loads(raw_data.decode('utf-8'))
-
-                    self.data_stats.emit(False, len(raw_header) + len(raw_data))
-
-                    if message['type'] == constants.Types.REQUEST:
-                        self.log(f'Data[{length}] received, {message["type"]}/{message["request"]}.',
-                                 level=logging.DEBUG)
-                    else:
-                        self.log(f'Data[{length}] received, {message["type"]}.', level=logging.DEBUG)
-
-                    self.handle_message(message)
-
-                except Exception as e:
-                    self.log(str(e), level=logging.CRITICAL, error=e)
-                    self.error.emit()
-                    break
-        finally:
-            self.log('Closing socket.', level=logging.INFO)
-            self.client.close()
+        for event in self.core.events():
+            if not self._running:
+                break
+            self.event.emit(event)

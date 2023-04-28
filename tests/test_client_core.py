@@ -9,7 +9,28 @@ import socket
 
 import pytest
 
+from shared import constants
+from shared import protocol
 from client import core
+
+
+def test_core_replies_to_ping_with_pong():
+    server_end, client_end = socket.socketpair()
+    c = core.ClientCore('host', 1, 'nick')
+    c.sock = client_end
+    list(c._dispatch({'type': constants.Types.PING}))  # control frames yield no event
+    assert protocol.read_message(server_end)['type'] == constants.Types.PONG
+
+
+def test_core_answers_a_nick_request():
+    server_end, client_end = socket.socketpair()
+    c = core.ClientCore('host', 1, 'zara')
+    c.sock = client_end
+    list(c._dispatch({'type': constants.Types.REQUEST,
+                      'request': constants.Requests.REQUEST_NICK}))
+    reply = protocol.read_message(server_end)
+    assert reply['type'] == constants.Types.NICKNAME
+    assert reply['nickname'] == 'zara'
 
 
 def test_connect_failure_is_reported_not_raised():

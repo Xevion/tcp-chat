@@ -1,5 +1,4 @@
 import logging
-import socket
 from typing import List
 
 from PyQt5.QtCore import Qt, QEvent, QTimer
@@ -8,9 +7,7 @@ from sortedcontainers import SortedList
 
 from shared import constants
 from shared import helpers
-from shared import handshake
-from shared import protocol
-from shared.backoff import backoff_delays
+from client import core
 from client.ui.MainWindow import Ui_MainWindow
 from client.worker import ReceiveWorker
 
@@ -18,26 +15,29 @@ logger = logging.getLogger('gui')
 
 
 class MainWindow(QMainWindow, Ui_MainWindow):
+    """Thin Qt view over a :class:`client.core.ClientCore`.
+
+    The window holds no socket or protocol logic of its own; it connects through
+    the core, renders the events the core's receive loop emits, and drives the
+    core's reconnect backoff with a timer. A failed initial connection is raised
+    to the caller so it can re-prompt rather than the window crashing mid-build.
+    """
+
     def __init__(self, ip: str, port: int, nickname: str, use_tls: bool = False, *args, **kwargs):
-        # Initial UI setup
         super(MainWindow, self).__init__(*args, **kwargs)
         self.setupUi(self)
-        self.show()
 
-        self.ip, self.port, self.nickname = ip, port, nickname
-        self.use_tls = use_tls
+        self.core = core.ClientCore(ip, port, nickname, use_tls=use_tls)
         self.closed = False
-        self._reconnect_delays = None
         self._stability_timer = None
-        self._connect_reason = ''
-        self._connect_permanent = False
 
-        # Connect to server
-        if not self.open_socket():
-            raise ConnectionError(self._connect_reason or f'Could not connect to {ip}:{port}')
+        # Connect before showing: a failed connection should come back to the
+        # caller as an error, not flash a half-built window on screen.
+        result = self.core.connect()
+        if not result.ok:
+            raise ConnectionError(result.reason or f'Could not connect to {ip}:{port}')
 
-        # Setup message receiving thread worker
-        self.start_worker()
+        self.show()
 
         # Setup message box return key logic
         self.messageBox.installEventFilter(self)
@@ -46,65 +46,39 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.data_stats.setAlignment(Qt.AlignVCenter)
         self.status_bar.addPermanentWidget(self.data_stats)
 
-        # Variables for managing
+        # Variables for managing messages
         self.messages = SortedList(key=lambda message: message['time'])
         self.added_messages = []
         self.max_message_id = -1
 
-        self.sent, self.received = 0, 0
-
-    def open_socket(self) -> bool:
-        """Open a fresh connection and run the handshake, negotiating TLS if enabled.
-
-        On failure, records the reason and whether it is permanent (a stated
-        server rejection, which retrying won't fix) versus transient (a network
-        drop, which might recover) so the caller can decide whether to back off.
-        """
-        try:
-            sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-            sock.connect((self.ip, self.port))
-        except OSError as e:
-            self._connect_reason, self._connect_permanent = str(e), False
-            return False
-
-        result = handshake.negotiate_client(
-            sock, want_tls=self.use_tls, version=protocol.PROTOCOL_VERSION,
-            verify=constants.TLS_VERIFY, server_hostname=self.ip)
-        if not result.ok:
-            self._connect_reason, self._connect_permanent = result.reason, result.rejected
-            try:
-                sock.close()
-            except OSError:
-                pass
-            return False
-
-        self.client = result.sock
-        self._connect_reason, self._connect_permanent = '', False
-        return True
+        self.start_worker()
 
     def start_worker(self) -> None:
-        """Spin up a receive worker bound to the current socket and wire its signals."""
-        self.receiveThread = ReceiveWorker(self.client, self.nickname)
-        self.receiveThread.messages.connect(self.add_message)  # Adding new messages
-        self.receiveThread.client_list.connect(self.update_connections)  # Updating the connections list
-        self.receiveThread.logs.connect(self.log)  # Receiving logging messages from a thread
-        self.receiveThread.data_stats.connect(self.count_stats)  # Receiving data usage stats
-        self.receiveThread.error.connect(self.on_connection_lost)  # Reconnect when the socket drops
+        """Spin up a receive worker bound to the core and wire its event signal."""
+        self.receiveThread = ReceiveWorker(self.core)
+        self.receiveThread.event.connect(self.on_event)
         self.receiveThread.start()
         # Treat the link as healthy once it survives a few seconds, resetting the
         # backoff so a later, unrelated drop starts its own fresh sequence.
         self._arm_stability_timer()
 
+    def on_event(self, event: core.Event) -> None:
+        """Render one core event onto the UI."""
+        if event.type == core.MESSAGE:
+            self.add_message(event.payload)
+        elif event.type == core.USER_LIST:
+            self.update_connections(event.payload['users'])
+        elif event.type == core.STATS:
+            self._render_stats()
+        elif event.type == core.DISCONNECTED:
+            self.on_connection_lost()
+
     def on_connection_lost(self) -> None:
-        """Schedule a backoff-driven reconnect after the worker reports a dropped socket."""
+        """Schedule a backoff-driven reconnect after the core reports a dropped socket."""
         if self.closed:
             return
         self._cancel_stability_timer()
-        # Keep advancing the existing backoff; resetting it on every drop turns a
-        # connection that flaps immediately into a tight reconnect loop.
-        if self._reconnect_delays is None:
-            self._reconnect_delays = backoff_delays()
-        delay = next(self._reconnect_delays)
+        delay = self.core.next_reconnect_delay()
         self.status_bar.showMessage(f'Connection lost, reconnecting in {delay:.0f}s...')
         QTimer.singleShot(int(delay * 1000), self.try_reconnect)
 
@@ -112,14 +86,15 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         """Attempt a single reconnect, rescheduling itself with backoff on failure."""
         if self.closed:
             return
-        if self.open_socket():
+        result = self.core.connect()
+        if result.ok:
             self.status_bar.showMessage('Reconnected.', 3000)
             self.start_worker()
-        elif self._connect_permanent:
+        elif result.permanent:
             # The server stated why it refused us; reconnecting can't fix that.
-            self.status_bar.showMessage(f'Cannot reconnect: {self._connect_reason}')
+            self.status_bar.showMessage(f'Cannot reconnect: {result.reason}')
         else:
-            delay = next(self._reconnect_delays)
+            delay = self.core.next_reconnect_delay()
             QTimer.singleShot(int(delay * 1000), self.try_reconnect)
 
     def _arm_stability_timer(self) -> None:
@@ -135,31 +110,18 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             self._stability_timer = None
 
     def _mark_connection_stable(self) -> None:
-        self._reconnect_delays = None
+        self.core.reset_backoff()
 
-    def count_stats(self, sent: bool, change: int) -> None:
-        """Handler for counting data statistics."""
-        if change != 0:
-            if sent:
-                self.sent += change
-            else:
-                self.received += change
-            self.data_stats.setText(f'{helpers.sizeof_fmt(self.sent)} Sent, '
-                                    f'{helpers.sizeof_fmt(self.received)} Received')
-
-    @staticmethod
-    def log(log_data: dict) -> None:
-        """Handler for data logging from a thread."""
-        logger.log(level=log_data['level'], msg=log_data['message'], exc_info=log_data['error'])
+    def _render_stats(self) -> None:
+        self.data_stats.setText(f'{helpers.sizeof_fmt(self.core.sent)} Sent, '
+                                f'{helpers.sizeof_fmt(self.core.received)} Received')
 
     def closeEvent(self, event):
         """Handle closing by telling the server goodbye and stopping the receive thread."""
         self.closed = True  # stop any reconnect attempts from rescheduling
-        try:
-            self.send(helpers.prepare_quit())
-        except OSError:
-            pass  # socket already gone; nothing to announce
+        self.core.send_quit()
         self.receiveThread.stop()
+        self.core.close()  # unblocks the worker's recv so the thread can exit
         event.accept()  # let the window close
 
     def eventFilter(self, obj, event) -> bool:
@@ -186,10 +148,6 @@ class MainWindow(QMainWindow, Ui_MainWindow):
 
         scrollbar.setValue(scrollbar.maximum() if at_maximum else last_position)
 
-    def send(self, data: bytes, **kwargs) -> None:
-        self.count_stats(True, len(data))
-        self.client.send(data, **kwargs)
-
     def add_message(self, message: dict) -> None:
         message_id = message['id']
         if message_id not in self.added_messages:
@@ -208,14 +166,8 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             self.refresh_messages()
 
     def send_message(self, message: str) -> None:
-        message = message.strip()
-        if len(message) > 0:
-            self.send(helpers.prepare_json(
-                    {
-                        'type': constants.Types.MESSAGE,
-                        'content': message
-                    }
-            ))
+        self.core.send_message(message)
+        self._render_stats()
 
     def update_connections(self, users: List[dict]):
         """Update the Connections List widget"""
