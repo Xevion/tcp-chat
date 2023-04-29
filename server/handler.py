@@ -201,7 +201,7 @@ class Client(BaseClient):
             raise DataReceptionException('The socket received a invalid JSON structure.')
         else:
             self.last_seen = time.time()
-            logger.info(f'Data received/parsed, type: {data["type"]}')
+            logger.debug(f'Data received/parsed, type: {data["type"]}')
             return data
 
     def handle_nickname(self, nickname: str) -> None:
@@ -265,7 +265,7 @@ class Client(BaseClient):
 
         while True:
             try:
-                logger.info('Waiting to received data')
+                logger.debug('Waiting to receive data')
                 data = self.receive()
 
                 if data['type'] == constants.Types.REQUEST:
