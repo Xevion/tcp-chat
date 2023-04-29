@@ -29,22 +29,26 @@ class HandshakeResult(NamedTuple):
     sock: Optional[socket.socket]
     reason: str = ''
     rejected: bool = False  # True when the server stated a refusal, so retrying is pointless
+    probe: bool = False  # True when the client announced this as a reachability probe
 
 
 def negotiate_client(sock: socket.socket, want_tls: bool, version: int,
                      verify: bool = False, server_hostname: str = None,
-                     timeout: float = HANDSHAKE_TIMEOUT) -> HandshakeResult:
+                     timeout: float = HANDSHAKE_TIMEOUT, is_probe: bool = False) -> HandshakeResult:
     """Run the client side of the handshake, returning the (maybe upgraded) socket.
 
     Never raises: a refusal or transport error comes back as ``ok=False`` with a
     human-readable ``reason``. A shorter ``timeout`` keeps a reachability probe
     from blocking for the full handshake window on an unresponsive peer.
+    ``is_probe`` marks the HELLO as a reachability check so the server can answer
+    and hang up cleanly instead of building a client it will never hear from.
     """
     previous_timeout = sock.gettimeout()
     sock.settimeout(timeout)
     try:
         sock.sendall(protocol.encode(
-            {'type': constants.Types.HELLO, 'version': version, 'tls': bool(want_tls)}))
+            {'type': constants.Types.HELLO, 'version': version,
+             'tls': bool(want_tls), 'probe': bool(is_probe)}))
         reply = protocol.read_message(sock)
     except (OSError, ValueError) as e:
         return HandshakeResult(False, None, f'handshake failed: {e}')
@@ -88,13 +92,14 @@ def negotiate_server(sock: socket.socket, require_tls: bool, supports_tls: bool,
         except OSError:
             pass
 
+    is_probe = bool(hello.get('probe'))
     reason = _refusal(hello, require_tls, supports_tls, version)
     if reason is not None:
         try:
             sock.sendall(protocol.encode({'type': constants.Types.REJECT, 'reason': reason}))
         except OSError:
             pass
-        return HandshakeResult(False, None, reason)
+        return HandshakeResult(False, None, reason, probe=is_probe)
 
     upgrade = bool(hello.get('tls')) and supports_tls
     try:
@@ -103,9 +108,9 @@ def negotiate_server(sock: socket.socket, require_tls: bool, supports_tls: bool,
             context = tls.server_context(certfile, keyfile)
             sock = context.wrap_socket(sock, server_side=True)
     except OSError as e:  # ssl.SSLError is an OSError subclass
-        return HandshakeResult(False, None, f'TLS upgrade failed: {e}')
+        return HandshakeResult(False, None, f'TLS upgrade failed: {e}', probe=is_probe)
 
-    return HandshakeResult(True, sock)
+    return HandshakeResult(True, sock, probe=is_probe)
 
 
 def _refusal(hello: dict, require_tls: bool, supports_tls: bool, version: int) -> Optional[str]:

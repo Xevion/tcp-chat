@@ -11,6 +11,14 @@ from shared import protocol
 logger = logging.getLogger('server')
 
 
+def _close(sock: socket.socket) -> None:
+    """Close a socket, ignoring an already-closed one."""
+    try:
+        sock.close()
+    except OSError:
+        pass
+
+
 def serve(host: str = constants.DEFAULT_IP, port: int = constants.DEFAULT_PORT, use_tls: bool = False) -> None:
     """Bind to host/port and accept clients until interrupted."""
     server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -33,22 +41,29 @@ def serve(host: str = constants.DEFAULT_IP, port: int = constants.DEFAULT_PORT, 
             # take down the whole server, so isolate it from the accept loop.
             client = None
             try:
-                logger.info(f"New connection from {address}")
-
                 # Negotiate version and TLS in cleartext before anything else; a
                 # mismatch is answered with a stated rejection, not a silent drop.
                 negotiation = handshake.negotiate_server(
                     conn, require_tls=use_tls, supports_tls=use_tls,
                     version=protocol.PROTOCOL_VERSION,
                     certfile=constants.TLS_CERT, keyfile=constants.TLS_KEY)
+
+                # A reachability probe just wants the handshake answered; close it
+                # cleanly without building a client, so the common Test Connection
+                # workflow doesn't look like an error in the logs.
+                if negotiation.probe:
+                    logger.debug('Test connection from %s: %s', address,
+                                 'reachable' if negotiation.ok else negotiation.reason)
+                    _close(negotiation.sock or conn)
+                    continue
+
+                # A stated mismatch is an expected, handled outcome, not a fault.
                 if not negotiation.ok:
-                    logger.warning(f'Rejected connection from {address}: {negotiation.reason}')
-                    try:
-                        conn.close()
-                    except OSError:
-                        pass
+                    logger.info(f'Refused connection from {address}: {negotiation.reason}')
+                    _close(conn)
                     continue
                 conn = negotiation.sock
+                logger.info(f"New connection from {address}")
 
                 client = handler.Client(conn, address, clients, lambda: stop_flag)
                 clients.append(client)
@@ -68,10 +83,7 @@ def serve(host: str = constants.DEFAULT_IP, port: int = constants.DEFAULT_PORT, 
                 if client is not None:
                     client.discard()
                 else:
-                    try:
-                        conn.close()
-                    except OSError:
-                        pass
+                    _close(conn)
     except KeyboardInterrupt:
         logger.info('User stopped server manually. Enabling stop flag.')
         stop_flag = True

@@ -101,6 +101,28 @@ def test_a_transport_failure_is_not_marked_permanent():
     assert client.rejected is False  # a dropped link might recover; safe to retry
 
 
+def test_a_probe_hello_is_reported_to_the_server():
+    a, b = socket.socketpair()
+    thread, box = _run_server(
+        lambda: handshake.negotiate_server(a, require_tls=False, supports_tls=False, version=1))
+    client = handshake.negotiate_client(b, want_tls=False, version=1, is_probe=True)
+    thread.join()
+
+    assert client.ok
+    assert box['result'].ok
+    assert box['result'].probe is True  # so the server can answer and hang up cleanly
+
+
+def test_a_normal_hello_is_not_flagged_as_a_probe():
+    a, b = socket.socketpair()
+    thread, box = _run_server(
+        lambda: handshake.negotiate_server(a, require_tls=False, supports_tls=False, version=1))
+    handshake.negotiate_client(b, want_tls=False, version=1)
+    thread.join()
+
+    assert box['result'].probe is False
+
+
 def test_tls_negotiation_upgrades_both_ends(self_signed):
     cert, key = self_signed
     listener = socket.socket(socket.AF_INET, socket.SOCK_STREAM)

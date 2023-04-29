@@ -45,13 +45,14 @@ class ConnectResult(NamedTuple):
 
 def open_connection(host: str, port: int, use_tls: bool = False, verify: bool = False,
                     version: int = protocol.PROTOCOL_VERSION, server_hostname: str = None,
-                    timeout: float = None) -> ConnectResult:
+                    timeout: float = None, is_probe: bool = False) -> ConnectResult:
     """Open a socket and run the client handshake, the one true 'connect' path.
 
     A real connection and a reachability probe both go through here, so the probe
     can never drift from what connecting actually does. ``timeout`` (when given)
     bounds both the TCP connect and the handshake; a real connect leaves it unset
-    and then streams on a blocking socket.
+    and then streams on a blocking socket. ``is_probe`` tells the server this is a
+    reachability check it can answer and close, rather than a client to set up.
     """
     sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     if timeout is not None:
@@ -65,7 +66,7 @@ def open_connection(host: str, port: int, use_tls: bool = False, verify: bool = 
     handshake_timeout = timeout if timeout is not None else handshake.HANDSHAKE_TIMEOUT
     result = handshake.negotiate_client(
         sock, want_tls=use_tls, version=version, verify=verify,
-        server_hostname=server_hostname or host, timeout=handshake_timeout)
+        server_hostname=server_hostname or host, timeout=handshake_timeout, is_probe=is_probe)
     if not result.ok:
         try:
             sock.close()
@@ -89,7 +90,8 @@ def probe(host: str, port: int, use_tls: bool = False, verify: bool = False,
     This is a connect dry-run: it runs the same handshake a client would, so a
     version or TLS mismatch is reported here exactly as it would be on connect.
     """
-    result = open_connection(host, port, use_tls=use_tls, verify=verify, timeout=timeout)
+    result = open_connection(host, port, use_tls=use_tls, verify=verify,
+                             timeout=timeout, is_probe=True)
     if result.sock is not None:
         try:
             result.sock.close()
