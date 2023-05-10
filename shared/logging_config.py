@@ -7,11 +7,12 @@ switch and an optional log file can be turned on without touching any module.
 """
 
 import logging
+from typing import Optional
 
 DEFAULT_FORMAT = '[%(asctime)s] [%(levelname)s] [%(threadName)s] [%(name)s] %(message)s'
 
 
-def configure(level: int = logging.INFO, logfile: str = None) -> None:
+def configure(level: int = logging.INFO, logfile: Optional[str] = None) -> None:
     """Reset root logging to a console handler (and optional file) at ``level``.
 
     Safe to call more than once: existing handlers are cleared first, so repeated

@@ -23,7 +23,7 @@ logger = logging.getLogger('handler')
 class BaseClient(object):
     """A simple base class for the client containing basic client communication methods."""
 
-    def __init__(self, conn: socket.socket, all_clients: List['Client'], address, stop_flag: Callable[[], bool]) -> None:
+    def __init__(self, conn: socket.socket, all_clients: List['BaseClient'], address, stop_flag: Callable[[], bool]) -> None:
         self.conn, self.all_clients, self.address, self.stop_flag = conn, all_clients, address, stop_flag
         self.db: Optional[db.ServerDatabase] = None
 
@@ -72,6 +72,7 @@ class BaseClient(object):
 
     def broadcast_message(self, message: str) -> None:
         """Sends a string message to all connected clients as the Server."""
+        assert self.db is not None, 'broadcast_message runs after the database is connected'
         timestamp = int(time.time())
         message_id = self.db.add_message('Server', 'server', constants.Colors.BLACK.hex, message, timestamp)
         prepared = helpers.prepare_message(
@@ -95,7 +96,7 @@ class Client(BaseClient):
     Client.run() should be ran in a thread alongside the other clients.
     """
 
-    def __init__(self, conn: socket.socket, address: Any, all_clients: List['Client'], stop_flag: Callable[[], bool]):
+    def __init__(self, conn: socket.socket, address: Any, all_clients: List['BaseClient'], stop_flag: Callable[[], bool]):
         super().__init__(conn, all_clients, address, stop_flag)
 
         self.id = str(uuid.uuid4())
@@ -106,7 +107,7 @@ class Client(BaseClient):
 
         self.command = CommandHandler(self)
         self.first_seen = time.time()
-        self.last_nickname_change = None
+        self.last_nickname_change: Optional[float] = None
         self.last_seen = time.time()
         self.last_ping = 0.0
 
@@ -148,6 +149,7 @@ class Client(BaseClient):
         time_limit = min(60 * 30, max(0, time_limit))
         min_time = int(time.time()) - time_limit
 
+        assert self.db is not None, 'send_message_history runs after the database is connected'
         with db.lock:
             cur = self.db.conn.cursor()
             try:
@@ -284,6 +286,7 @@ class Client(BaseClient):
                     self.handle_nickname(data['nickname'])
                 elif data['type'] == constants.Types.MESSAGE:
                     # Record the message in the DB.
+                    assert self.db is not None  # connected at the top of handle()
                     message_id = self.db.add_message(self.nickname, self.id, self.color.hex, data['content'],
                                                      int(time.time()))
 

@@ -38,7 +38,8 @@ class Database(abc.ABC):
 
     @abc.abstractmethod
     def construct(self) -> None:
-        self._construct()
+        """Create this database's tables; implemented by each concrete subclass."""
+        ...
 
 
 class ClientDatabase(Database):
@@ -57,7 +58,8 @@ class ClientDatabase(Database):
                             initial_time TIMESTAMP NOT NULL,
                             latest_time TIMESTAMP NOT NULL);''')
 
-    def remember_connection(self, address: str, port: int, nickname: str, password: str = None) -> None:
+    def remember_connection(self, address: str, port: int, nickname: str,
+                            password: Optional[str] = None) -> None:
         """Record a successful connection, bumping its use count if already known."""
         now = datetime.datetime.now()
         with lock:
@@ -86,7 +88,7 @@ class ClientDatabase(Database):
                 row = cur.fetchone()
             finally:
                 cur.close()
-        return self._as_connection(row)
+        return self._as_connection(row) if row is not None else None
 
     def recent_connections(self, limit: int = 10) -> List[dict]:
         """Return stored connections, most recently used first."""
@@ -121,10 +123,8 @@ class ClientDatabase(Database):
                                   [1 if favorite else 0, address, port, nickname])
 
     @staticmethod
-    def _as_connection(row) -> Optional[dict]:
+    def _as_connection(row) -> dict:
         """Turn a (address, port, nickname, password, favorite) row into a dict."""
-        if row is None:
-            return None
         return {'address': row[0], 'port': row[1], 'nickname': row[2],
                 'password': row[3], 'favorite': bool(row[4])}
 
@@ -159,7 +159,9 @@ class ServerDatabase(Database):
                 try:
                     cur.execute('''INSERT INTO message (nickname, connection_hash, color, message, timestamp)
                                 VALUES (?, ?, ?, ?, ?)''', [nickname, user_hash, color, message, timestamp])
-                    logger.debug(f'Message #{cur.lastrowid} recorded.')
-                    return cur.lastrowid
+                    message_id = cur.lastrowid
+                    assert message_id is not None  # always set right after an INSERT
+                    logger.debug(f'Message #{message_id} recorded.')
+                    return message_id
                 finally:
                     cur.close()

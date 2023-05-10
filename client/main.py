@@ -1,4 +1,5 @@
 import logging
+from typing import Optional
 
 from PyQt5.QtWidgets import QApplication, QMessageBox
 
@@ -9,7 +10,8 @@ from client import theme
 logger = logging.getLogger(__name__)
 
 
-def main(nickname: str = None, host: str = None, port: int = None, use_tls: bool = None):
+def main(nickname: Optional[str] = None, host: Optional[str] = None,
+         port: Optional[int] = None, use_tls: Optional[bool] = None):
     app = QApplication([])
     app.setApplicationName("TCPChat Client")
     app.setStyleSheet(theme.DARK_STYLESHEET)

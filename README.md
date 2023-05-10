@@ -73,6 +73,13 @@ fill the form, and use Test Connection to check a server is reachable before joi
 pipenv run pytest
 ```
 
+The codebase is type-checked with [mypy](https://mypy-lang.org/) (configured in
+`mypy.ini`):
+
+```bash
+pipenv run mypy
+```
+
 ## Building
 
 ```bash

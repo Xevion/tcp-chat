@@ -4,13 +4,15 @@ Precedence, highest first: an explicit CLI value, the config file's value, the
 constants default. Missing files are treated as empty configuration.
 """
 
+from typing import Optional
+
 import tomli
 
 DEFAULT_CONFIG_PATH = 'tcp-chat.toml'
 
 
 class Config:
-    def __init__(self, data: dict = None):
+    def __init__(self, data: Optional[dict] = None):
         self.data = data or {}
 
     @classmethod

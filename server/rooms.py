@@ -17,7 +17,7 @@ def members_in(clients, room: str) -> List:
 
 def room_counts(clients) -> Dict[str, int]:
     """Return a mapping of room name to member count for every occupied room."""
-    counts = {}
+    counts: Dict[str, int] = {}
     for client in clients:
         room = getattr(client, 'room', constants.DEFAULT_ROOM)
         counts[room] = counts.get(room, 0) + 1

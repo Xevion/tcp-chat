@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import logging
 import random
-from typing import List, Optional, Callable
+from typing import Any, Dict, List, Optional, Callable
 from typing import TYPE_CHECKING
 
 from shared import constants
@@ -23,8 +23,8 @@ class CommandHandler:
 
     def __init__(self, client: Client) -> None:
         self.client = client
-        self.aliases = {}
-        self.commands = {}
+        self.aliases: Dict[str, str] = {}
+        self.commands: Dict[str, Any] = {}  # heterogeneous: func, name, description, aliases
         self.__install_command(self.reroll, 'Reroll', 'reroll', 'Change your color to a random color.',
                                aliases=['newcolor'])
         self.__install_command(self.join, 'Join', 'join', 'Move to another room, e.g. /join games.',
@@ -34,8 +34,9 @@ class CommandHandler:
         self.__install_command(self.help, 'Help', 'help', 'Get info on a given commands functionality and more.',
                                aliases=['about', 'doc'])
 
-    def __install_command(self, func: Callable, name: str = None, command_name: str = None, description: str = '',
-                          aliases: List[str] = None):
+    def __install_command(self, func: Callable, name: Optional[str] = None,
+                          command_name: Optional[str] = None, description: str = '',
+                          aliases: Optional[List[str]] = None):
         if aliases is None:
             aliases = []
 
@@ -93,7 +94,7 @@ class CommandHandler:
         contrast = round(constants.Colors.WHITE.contrast_ratio(new_color), 1)
         return f'Changed your color to {new_color.name} ({new_color.hex}/{contrast})'
 
-    def join(self, room: str = None) -> Optional[str]:
+    def join(self, room: Optional[str] = None) -> Optional[str]:
         """
         Move the client into another room, announcing the move to both rooms.
         """
@@ -121,7 +122,7 @@ class CommandHandler:
         listing = ', '.join(f'{name} ({count})' for name, count in sorted(counts.items()))
         return f'Active rooms: {listing}'
 
-    def help(self, command: str = None) -> Optional[str]:
+    def help(self, command: Optional[str] = None) -> Optional[str]:
         """
         Print information about a given command
         :return:

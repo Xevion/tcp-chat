@@ -44,8 +44,8 @@ class ConnectResult(NamedTuple):
 
 
 def open_connection(host: str, port: int, use_tls: bool = False, verify: bool = False,
-                    version: int = protocol.PROTOCOL_VERSION, server_hostname: str = None,
-                    timeout: float = None, is_probe: bool = False) -> ConnectResult:
+                    version: int = protocol.PROTOCOL_VERSION, server_hostname: Optional[str] = None,
+                    timeout: Optional[float] = None, is_probe: bool = False) -> ConnectResult:
     """Open a socket and run the client handshake, the one true 'connect' path.
 
     A real connection and a reachability probe both go through here, so the probe
@@ -74,6 +74,7 @@ def open_connection(host: str, port: int, use_tls: bool = False, verify: bool = 
             pass
         return ConnectResult(False, None, result.reason, permanent=result.rejected)
 
+    assert result.sock is not None  # ok implies an upgraded, usable socket
     result.sock.settimeout(None)  # the streaming phase blocks on recv
     return ConnectResult(True, result.sock)
 
@@ -109,12 +110,12 @@ class ClientCore:
                  verify: bool = constants.TLS_VERIFY, version: int = protocol.PROTOCOL_VERSION):
         self.host, self.port, self.nickname = host, port, nickname
         self.use_tls, self.verify, self.version = use_tls, verify, version
-        self.sock = None
+        self.sock: Optional[socket.socket] = None
         self.reason = ''
         self.permanent = False
         self.sent = 0
         self.received = 0
-        self._delays = None
+        self._delays: Optional[Iterator[float]] = None
 
     def connect(self) -> ConnectResult:
         """(Re)open the connection, recording why it failed for the caller to act on."""
@@ -170,6 +171,7 @@ class ClientCore:
                 yield Event(MESSAGE, _extract_message(submessage))
 
     def _send(self, data: bytes) -> None:
+        assert self.sock is not None, 'not connected'
         self.sent += len(data)
         self.sock.send(data)
 

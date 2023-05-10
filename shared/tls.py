@@ -6,6 +6,7 @@ verification turned off on the client.
 """
 
 import ssl
+from typing import Optional
 
 
 def server_context(certfile: str, keyfile: str) -> ssl.SSLContext:
@@ -15,7 +16,7 @@ def server_context(certfile: str, keyfile: str) -> ssl.SSLContext:
     return context
 
 
-def client_context(verify: bool = True, cafile: str = None) -> ssl.SSLContext:
+def client_context(verify: bool = True, cafile: Optional[str] = None) -> ssl.SSLContext:
     """Build an SSL context for the client.
 
     With ``verify=False`` the server's certificate is accepted without checking,

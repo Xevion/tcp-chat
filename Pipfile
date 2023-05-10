@@ -5,6 +5,7 @@ verify_ssl = true
 
 [dev-packages]
 pytest = "~=7.1"
+mypy = "~=1.2"
 
 [packages]
 pyqt5-tools = "~=5.15"

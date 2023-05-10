@@ -1,5 +1,5 @@
 import re
-from typing import Tuple
+from typing import Optional, Tuple
 
 from PyQt5.QtCore import QEvent, Qt, QThread, pyqtSignal
 from PyQt5.QtWidgets import QDialog, QStatusBar, QListWidgetItem, QMenu
@@ -57,8 +57,9 @@ class NicknameDialog(QDialog, Ui_NicknameDialog):
 
 
 class ConnectionDialog(QDialog, Ui_ConnectionDialog):
-    def __init__(self, nickname: str = None, host: str = None, port: int = None,
-                 use_tls: bool = False, db: ClientDatabase = None, *args, **kwargs):
+    def __init__(self, nickname: Optional[str] = None, host: Optional[str] = None,
+                 port: Optional[int] = None, use_tls: bool = False,
+                 db: Optional[ClientDatabase] = None, *args, **kwargs):
         super(ConnectionDialog, self).__init__(*args, **kwargs)
         self.setupUi(self)
 
@@ -101,7 +102,7 @@ class ConnectionDialog(QDialog, Ui_ConnectionDialog):
         self.status_layout.addWidget(self.status_bar)
 
         self.connect_pressed = False
-        self._probe = None
+        self._probe: Optional[ProbeWorker] = None
 
         self.load_connection_lists()
         self.show()

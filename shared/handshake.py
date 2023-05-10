@@ -33,7 +33,7 @@ class HandshakeResult(NamedTuple):
 
 
 def negotiate_client(sock: socket.socket, want_tls: bool, version: int,
-                     verify: bool = False, server_hostname: str = None,
+                     verify: bool = False, server_hostname: Optional[str] = None,
                      timeout: float = HANDSHAKE_TIMEOUT, is_probe: bool = False) -> HandshakeResult:
     """Run the client side of the handshake, returning the (maybe upgraded) socket.
 
@@ -74,7 +74,7 @@ def negotiate_client(sock: socket.socket, want_tls: bool, version: int,
 
 
 def negotiate_server(sock: socket.socket, require_tls: bool, supports_tls: bool, version: int,
-                     certfile: str = None, keyfile: str = None) -> HandshakeResult:
+                     certfile: Optional[str] = None, keyfile: Optional[str] = None) -> HandshakeResult:
     """Run the server side of the handshake against one freshly accepted socket.
 
     Validates the client's HELLO and either replies WELCOME (upgrading to TLS
@@ -105,6 +105,8 @@ def negotiate_server(sock: socket.socket, require_tls: bool, supports_tls: bool,
     try:
         sock.sendall(protocol.encode({'type': constants.Types.WELCOME, 'tls': upgrade}))
         if upgrade:
+            assert certfile is not None and keyfile is not None, \
+                'TLS was offered without a configured certificate and key'
             context = tls.server_context(certfile, keyfile)
             sock = context.wrap_socket(sock, server_side=True)
     except OSError as e:  # ssl.SSLError is an OSError subclass

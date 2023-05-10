@@ -1,6 +1,6 @@
 import html
 import time
-from typing import List, Tuple, Any
+from typing import List, Optional, Tuple, Any
 
 from shared import constants
 from shared import protocol
@@ -16,7 +16,8 @@ def prepare_json(obj: Any) -> bytes:
     return protocol.encode(obj)
 
 
-def prepare_message(nickname: str, message: str, color: str, message_id: int, timestamp: int = None) -> bytes:
+def prepare_message(nickname: str, message: str, color: str, message_id: int,
+                    timestamp: Optional[int] = None) -> bytes:
     return prepare_json(
         {
             'type': constants.Types.MESSAGE,

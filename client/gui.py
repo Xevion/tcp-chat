@@ -1,5 +1,5 @@
 import logging
-from typing import List
+from typing import List, Optional
 
 from PyQt5.QtCore import Qt, QEvent, QTimer
 from PyQt5.QtWidgets import QMainWindow, QLabel
@@ -29,7 +29,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
 
         self.core = core.ClientCore(ip, port, nickname, use_tls=use_tls)
         self.closed = False
-        self._stability_timer = None
+        self._stability_timer: Optional[QTimer] = None
 
         # Connect before showing: a failed connection should come back to the
         # caller as an error, not flash a half-built window on screen.
@@ -48,7 +48,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
 
         # Variables for managing messages
         self.messages = SortedList(key=lambda message: message['time'])
-        self.added_messages = []
+        self.added_messages: List[int] = []
         self.max_message_id = -1
 
         self.start_worker()

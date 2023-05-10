@@ -2,6 +2,7 @@ import logging
 import socket
 import sys
 import threading
+from typing import List
 
 from server import handler
 from shared import constants
@@ -27,7 +28,7 @@ def serve(host: str = constants.DEFAULT_IP, port: int = constants.DEFAULT_PORT, 
     server.listen(1)
     server.settimeout(0.5)
 
-    clients = []
+    clients: List[handler.BaseClient] = []
     stop_flag: bool = False
     try:
         logger.info(f'Waiting for connections on {host}:{port}...')
@@ -62,6 +63,7 @@ def serve(host: str = constants.DEFAULT_IP, port: int = constants.DEFAULT_PORT, 
                     logger.info(f'Refused connection from {address}: {negotiation.reason}')
                     _close(conn)
                     continue
+                assert negotiation.sock is not None  # ok implies a usable socket
                 conn = negotiation.sock
                 logger.info(f"New connection from {address}")
 
