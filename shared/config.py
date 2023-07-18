@@ -4,9 +4,8 @@ Precedence, highest first: an explicit CLI value, the config file's value, the
 constants default. Missing files are treated as empty configuration.
 """
 
+import tomllib
 from typing import Optional
-
-import tomli
 
 DEFAULT_CONFIG_PATH = 'tcp-chat.toml'
 
@@ -19,7 +18,7 @@ class Config:
     def load(cls, path: str = DEFAULT_CONFIG_PATH) -> 'Config':
         try:
             with open(path, 'rb') as handle:
-                return cls(tomli.load(handle))
+                return cls(tomllib.load(handle))
         except FileNotFoundError:
             return cls({})
 

@@ -14,7 +14,6 @@ pyqt5 = "~=5.15.2"
 sortedcontainers = "~=2.3.0"
 faker = "~=9.8.1"
 pyinstaller = ">=4.3"
-tomli = "~=2.0.1"
 
 [requires]
 python_version = "3.11"
