@@ -16,8 +16,9 @@ def configure(level: int = logging.INFO, logfile: Optional[str] = None) -> None:
     """Reset root logging to a console handler (and optional file) at ``level``.
 
     Safe to call more than once: existing handlers are cleared first, so repeated
-    calls don't stack duplicate output. (Python 3.7 lacks ``basicConfig(force=)``,
-    hence the manual reset.)
+    calls don't stack duplicate output. The reset is manual rather than
+    ``basicConfig(force=True)`` so the optional file handler can be attached
+    alongside the console in the same pass.
     """
     root = logging.getLogger()
     for handler in list(root.handlers):

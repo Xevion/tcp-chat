@@ -17,4 +17,4 @@ pyinstaller = ">=4.3"
 tomli = "~=2.0.1"
 
 [requires]
-python_version = "3.7"
+python_version = "3.11"
