@@ -4,16 +4,16 @@ url = "https://pypi.org/simple"
 verify_ssl = true
 
 [dev-packages]
-pytest = "~=7.1"
-mypy = "~=1.2"
+pytest = "==7.4.0"
+mypy = "==1.4.1"
 
 [packages]
-pyqt5-tools = "~=5.15"
-webcolors = "~=1.11.1"
-pyqt5 = "~=5.15.2"
-sortedcontainers = "~=2.3.0"
-faker = "~=9.8.1"
-pyinstaller = ">=4.3"
+pyqt5-tools = "==5.15.9.3.3"
+webcolors = "==1.13"
+pyqt5 = "==5.15.9"
+sortedcontainers = "==2.4.0"
+faker = "==19.1.0"
+pyinstaller = "==5.13.0"
 
 [requires]
 python_version = "3.11"
