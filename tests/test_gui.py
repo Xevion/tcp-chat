@@ -53,8 +53,7 @@ def test_failed_connect_raises_instead_of_crashing(app):
 
 
 def _user_names(window):
-    return [window.connectionsList.item(i).text()
-            for i in range(window.connectionsList.count())]
+    return [window.connectionsList.item(i).text() for i in range(window.connectionsList.count())]
 
 
 def test_window_renders_the_user_list_from_the_server(app, boot_server):
@@ -74,7 +73,6 @@ def test_window_shows_a_message_it_sends(app, boot_server):
         # Wait until the nickname round-trip has registered us on the server.
         assert _pump(app, lambda: 'alice' in _user_names(window))
         window.send_message('hello world')
-        assert _pump(app, lambda: any(m.get('message') == 'hello world'
-                                      for m in window.messages))
+        assert _pump(app, lambda: any(m.get('message') == 'hello world' for m in window.messages))
     finally:
         _close(window)

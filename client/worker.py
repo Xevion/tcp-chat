@@ -10,6 +10,7 @@ class ReceiveWorker(QThread):
     each :class:`client.core.Event` across to the GUI thread, so there is nothing
     here to keep in sync with the connection logic.
     """
+
     event = pyqtSignal(object)
 
     def __init__(self, core: ClientCore, parent=None):

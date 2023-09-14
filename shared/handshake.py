@@ -32,9 +32,15 @@ class HandshakeResult(NamedTuple):
     probe: bool = False  # True when the client announced this as a reachability probe
 
 
-def negotiate_client(sock: socket.socket, want_tls: bool, version: int,
-                     verify: bool = False, server_hostname: Optional[str] = None,
-                     timeout: float = HANDSHAKE_TIMEOUT, is_probe: bool = False) -> HandshakeResult:
+def negotiate_client(
+    sock: socket.socket,
+    want_tls: bool,
+    version: int,
+    verify: bool = False,
+    server_hostname: Optional[str] = None,
+    timeout: float = HANDSHAKE_TIMEOUT,
+    is_probe: bool = False,
+) -> HandshakeResult:
     """Run the client side of the handshake, returning the (maybe upgraded) socket.
 
     Never raises: a refusal or transport error comes back as ``ok=False`` with a
@@ -46,9 +52,16 @@ def negotiate_client(sock: socket.socket, want_tls: bool, version: int,
     previous_timeout = sock.gettimeout()
     sock.settimeout(timeout)
     try:
-        sock.sendall(protocol.encode(
-            {'type': constants.Types.HELLO, 'version': version,
-             'tls': bool(want_tls), 'probe': bool(is_probe)}))
+        sock.sendall(
+            protocol.encode(
+                {
+                    'type': constants.Types.HELLO,
+                    'version': version,
+                    'tls': bool(want_tls),
+                    'probe': bool(is_probe),
+                }
+            )
+        )
         reply = protocol.read_message(sock)
     except (OSError, ValueError) as e:
         return HandshakeResult(False, None, f'handshake failed: {e}')
@@ -59,7 +72,9 @@ def negotiate_client(sock: socket.socket, want_tls: bool, version: int,
             pass
 
     if reply.get('type') == constants.Types.REJECT:
-        return HandshakeResult(False, None, reply.get('reason', 'connection rejected'), rejected=True)
+        return HandshakeResult(
+            False, None, reply.get('reason', 'connection rejected'), rejected=True
+        )
     if reply.get('type') != constants.Types.WELCOME:
         return HandshakeResult(False, None, 'server sent an unexpected handshake reply')
 
@@ -73,8 +88,14 @@ def negotiate_client(sock: socket.socket, want_tls: bool, version: int,
     return HandshakeResult(True, sock)
 
 
-def negotiate_server(sock: socket.socket, require_tls: bool, supports_tls: bool, version: int,
-                     certfile: Optional[str] = None, keyfile: Optional[str] = None) -> HandshakeResult:
+def negotiate_server(
+    sock: socket.socket,
+    require_tls: bool,
+    supports_tls: bool,
+    version: int,
+    certfile: Optional[str] = None,
+    keyfile: Optional[str] = None,
+) -> HandshakeResult:
     """Run the server side of the handshake against one freshly accepted socket.
 
     Validates the client's HELLO and either replies WELCOME (upgrading to TLS
@@ -105,8 +126,9 @@ def negotiate_server(sock: socket.socket, require_tls: bool, supports_tls: bool,
     try:
         sock.sendall(protocol.encode({'type': constants.Types.WELCOME, 'tls': upgrade}))
         if upgrade:
-            assert certfile is not None and keyfile is not None, \
-                'TLS was offered without a configured certificate and key'
+            assert (
+                certfile is not None and keyfile is not None
+            ), 'TLS was offered without a configured certificate and key'
             context = tls.server_context(certfile, keyfile)
             sock = context.wrap_socket(sock, server_side=True)
     except OSError as e:  # ssl.SSLError is an OSError subclass

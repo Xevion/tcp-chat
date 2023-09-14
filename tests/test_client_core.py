@@ -26,8 +26,7 @@ def test_core_answers_a_nick_request():
     server_end, client_end = socket.socketpair()
     c = core.ClientCore('host', 1, 'zara')
     c.sock = client_end
-    list(c._dispatch({'type': constants.Types.REQUEST,
-                      'request': constants.Requests.REQUEST_NICK}))
+    list(c._dispatch({'type': constants.Types.REQUEST, 'request': constants.Requests.REQUEST_NICK}))
     reply = protocol.read_message(server_end)
     assert reply['type'] == constants.Types.NICKNAME
     assert reply['nickname'] == 'zara'
@@ -67,7 +66,8 @@ def test_connect_then_receives_user_list_with_our_nickname(boot_server):
     try:
         for event in c.events():
             if event.type == core.USER_LIST and 'alice' in {
-                    u['nickname'] for u in event.payload['users']}:
+                u['nickname'] for u in event.payload['users']
+            }:
                 break
             if event.type == core.DISCONNECTED:
                 pytest.fail('disconnected before the user list arrived')
@@ -84,8 +84,11 @@ def test_sent_message_is_broadcast_back(boot_server):
     sent = False
     try:
         for event in c.events():
-            if event.type == core.USER_LIST and not sent and 'alice' in {
-                    u['nickname'] for u in event.payload['users']}:
+            if (
+                event.type == core.USER_LIST
+                and not sent
+                and 'alice' in {u['nickname'] for u in event.payload['users']}
+            ):
                 c.send_message('hello')
                 sent = True
             elif event.type == core.MESSAGE and event.payload['message'] == 'hello':

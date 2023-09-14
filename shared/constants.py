@@ -24,7 +24,9 @@ TLS_VERIFY = False  # Verify the server certificate (off allows self-signed cert
 TLS_CERT = os.path.join(__BASE_DIR, 'cert.pem')
 TLS_KEY = os.path.join(__BASE_DIR, 'key.pem')
 
-ConnectionOptions = namedtuple('ConnectionOptions', ['ip', 'port', 'nickname', 'password', 'remember', 'tls'])
+ConnectionOptions = namedtuple(
+    'ConnectionOptions', ['ip', 'port', 'nickname', 'password', 'remember', 'tls']
+)
 ConnectionOptions.__new__.__defaults__ = (False,)  # tls defaults off
 
 
@@ -34,6 +36,7 @@ class Types:
     A message could be a request, a posting of information, a message etc.
     The Types class provides a universal naming for the types of messages that will be exchanged.
     """
+
     REQUEST = 'REQUEST'
     MESSAGE = 'MESSAGE'
     NICKNAME = 'NICKNAME'
@@ -52,11 +55,12 @@ class Requests:
     Requests describe a request between the server and client to send a specific type of information.
     The Requests class provides a universal naming for the types of requests that can be made and received.
     """
+
     REQUEST_NICK = 'REQUEST_NICK'  # Send the server the client's nickname
     GET_MESSAGE_HISTORY = 'GET_MESSAGE_HISTORY'  # Send the client a detailed list of all messages sent up to a certain point.
 
 
-class Color():
+class Color:
     """
     Describes a basic RGB color.
     """
@@ -149,10 +153,51 @@ class Colors:
     WHITE = Color("White", "#ffffff")
     YELLOW = Color("Yellow", "#ffff00")
 
-    ALL = [AQUA, AZURE, BEIGE, BLACK, BLUE, BROWN, CYAN, DARKBLUE, DARKCYAN, DARKGREY, DARKGREEN, DARKKHAKI,
-           DARKMAGENTA, DARKOLIVEGREEN, DARKORANGE, DARKORCHID, DARKRED, DARKSALMON, DARKVIOLET, FUCHSIA, GOLD, GREEN,
-           INDIGO, KHAKI, LIGHTBLUE, LIGHTCYAN, LIGHTGREEN, LIGHTGREY, LIGHTPINK, LIGHTYELLOW, LIME, MAGENTA, MAROON,
-           NAVY, OLIVE, ORANGE, PINK, PURPLE, VIOLET, RED, SILVER, WHITE, YELLOW]
+    ALL = [
+        AQUA,
+        AZURE,
+        BEIGE,
+        BLACK,
+        BLUE,
+        BROWN,
+        CYAN,
+        DARKBLUE,
+        DARKCYAN,
+        DARKGREY,
+        DARKGREEN,
+        DARKKHAKI,
+        DARKMAGENTA,
+        DARKOLIVEGREEN,
+        DARKORANGE,
+        DARKORCHID,
+        DARKRED,
+        DARKSALMON,
+        DARKVIOLET,
+        FUCHSIA,
+        GOLD,
+        GREEN,
+        INDIGO,
+        KHAKI,
+        LIGHTBLUE,
+        LIGHTCYAN,
+        LIGHTGREEN,
+        LIGHTGREY,
+        LIGHTPINK,
+        LIGHTYELLOW,
+        LIME,
+        MAGENTA,
+        MAROON,
+        NAVY,
+        OLIVE,
+        ORANGE,
+        PINK,
+        PURPLE,
+        VIOLET,
+        RED,
+        SILVER,
+        WHITE,
+        YELLOW,
+    ]
 
     @staticmethod
     def has_contrast(ratio: float, background: Color = WHITE) -> List[Color]:

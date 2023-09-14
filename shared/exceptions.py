@@ -8,4 +8,5 @@ class DataReceptionException(TCPChatException):
 
 class StopException(TCPChatException):
     """An exception that occurs when a thread finds a stop flag."""
+
     pass

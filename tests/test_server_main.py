@@ -20,6 +20,7 @@ def test_importing_server_main_does_not_bind_a_port():
 
 def test_serve_is_callable():
     from server.main import serve
+
     assert callable(serve)
 
 
@@ -42,8 +43,9 @@ def test_serve_survives_a_bad_handshake(self_signed, monkeypatch):
     monkeypatch.setattr(constants, 'TLS_KEY', key)
 
     host, port = '127.0.0.1', 55733
-    thread = threading.Thread(target=serve, kwargs={'host': host, 'port': port, 'use_tls': True},
-                              daemon=True)
+    thread = threading.Thread(
+        target=serve, kwargs={'host': host, 'port': port, 'use_tls': True}, daemon=True
+    )
     thread.start()
     _wait_until_listening(host, port)
 
@@ -55,8 +57,13 @@ def test_serve_survives_a_bad_handshake(self_signed, monkeypatch):
 
     # The server must still be alive and serving a proper negotiated TLS client.
     raw = socket.create_connection((host, port))
-    result = handshake.negotiate_client(raw, want_tls=True, version=protocol.PROTOCOL_VERSION,
-                                        verify=False, server_hostname='localhost')
+    result = handshake.negotiate_client(
+        raw,
+        want_tls=True,
+        version=protocol.PROTOCOL_VERSION,
+        verify=False,
+        server_hostname='localhost',
+    )
     assert result.ok
     message = protocol.read_message(result.sock)
     result.sock.close()

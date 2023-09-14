@@ -113,8 +113,10 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.core.reset_backoff()
 
     def _render_stats(self) -> None:
-        self.data_stats.setText(f'{helpers.sizeof_fmt(self.core.sent)} Sent, '
-                                f'{helpers.sizeof_fmt(self.core.received)} Received')
+        self.data_stats.setText(
+            f'{helpers.sizeof_fmt(self.core.sent)} Sent, '
+            f'{helpers.sizeof_fmt(self.core.received)} Received'
+        )
 
     def closeEvent(self, event):
         """Handle closing by telling the server goodbye and stopping the receive thread."""
@@ -142,9 +144,11 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         last_position = scrollbar.value()
         at_maximum = last_position == scrollbar.maximum()
 
-        self.messageHistory.setText('<br>'.join(
+        self.messageHistory.setText(
+            '<br>'.join(
                 msg['compiled'] for msg in helpers.tail(self.messages, constants.MAX_SCROLLBACK)
-        ))
+            )
+        )
 
         scrollbar.setValue(scrollbar.maximum() if at_maximum else last_position)
 

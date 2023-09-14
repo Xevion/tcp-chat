@@ -20,10 +20,14 @@ def _close(sock: socket.socket) -> None:
         pass
 
 
-def serve(host: str = constants.DEFAULT_IP, port: int = constants.DEFAULT_PORT, use_tls: bool = False) -> None:
+def serve(
+    host: str = constants.DEFAULT_IP, port: int = constants.DEFAULT_PORT, use_tls: bool = False
+) -> None:
     """Bind to host/port and accept clients until interrupted."""
     server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    server.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)  # restart without waiting on TIME_WAIT
+    server.setsockopt(
+        socket.SOL_SOCKET, socket.SO_REUSEADDR, 1
+    )  # restart without waiting on TIME_WAIT
     server.bind((host, port))
     server.listen(1)
     server.settimeout(0.5)
@@ -45,16 +49,23 @@ def serve(host: str = constants.DEFAULT_IP, port: int = constants.DEFAULT_PORT, 
                 # Negotiate version and TLS in cleartext before anything else; a
                 # mismatch is answered with a stated rejection, not a silent drop.
                 negotiation = handshake.negotiate_server(
-                    conn, require_tls=use_tls, supports_tls=use_tls,
+                    conn,
+                    require_tls=use_tls,
+                    supports_tls=use_tls,
                     version=protocol.PROTOCOL_VERSION,
-                    certfile=constants.TLS_CERT, keyfile=constants.TLS_KEY)
+                    certfile=constants.TLS_CERT,
+                    keyfile=constants.TLS_KEY,
+                )
 
                 # A reachability probe just wants the handshake answered; close it
                 # cleanly without building a client, so the common Test Connection
                 # workflow doesn't look like an error in the logs.
                 if negotiation.probe:
-                    logger.debug('Test connection from %s: %s', address,
-                                 'reachable' if negotiation.ok else negotiation.reason)
+                    logger.debug(
+                        'Test connection from %s: %s',
+                        address,
+                        'reachable' if negotiation.ok else negotiation.reason,
+                    )
                     _close(negotiation.sock or conn)
                     continue
 

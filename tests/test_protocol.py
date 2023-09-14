@@ -19,14 +19,14 @@ class FakeSocket:
 
     def recv(self, length: int) -> bytes:
         end = min(self.position + min(length, self.chunk_size), len(self.data))
-        chunk = self.data[self.position:end]
+        chunk = self.data[self.position : end]
         self.position = end
         return chunk
 
 
 def test_encode_uses_byte_length_header():
     framed = protocol.encode({'content': 'hello'})
-    header, body = framed[:protocol.HEADER_LENGTH], framed[protocol.HEADER_LENGTH:]
+    header, body = framed[: protocol.HEADER_LENGTH], framed[protocol.HEADER_LENGTH :]
     assert int(header) == len(body)
     assert json.loads(body.decode('utf-8'))['content'] == 'hello'
 

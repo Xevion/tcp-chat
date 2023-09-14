@@ -23,6 +23,9 @@ def test_configure_does_not_stack_handlers_on_repeated_calls():
     logging_config.configure()
     logging_config.configure()
     root = logging.getLogger()
-    stream_only = [h for h in root.handlers
-                   if isinstance(h, logging.StreamHandler) and not isinstance(h, logging.FileHandler)]
+    stream_only = [
+        h
+        for h in root.handlers
+        if isinstance(h, logging.StreamHandler) and not isinstance(h, logging.FileHandler)
+    ]
     assert len(stream_only) == 1

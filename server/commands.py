@@ -25,18 +25,39 @@ class CommandHandler:
         self.client = client
         self.aliases: Dict[str, str] = {}
         self.commands: Dict[str, Any] = {}  # heterogeneous: func, name, description, aliases
-        self.__install_command(self.reroll, 'Reroll', 'reroll', 'Change your color to a random color.',
-                               aliases=['newcolor'])
-        self.__install_command(self.join, 'Join', 'join', 'Move to another room, e.g. /join games.',
-                               aliases=['j'])
-        self.__install_command(self.rooms, 'Rooms', 'rooms', 'List the active rooms and their member counts.',
-                               aliases=['channels'])
-        self.__install_command(self.help, 'Help', 'help', 'Get info on a given commands functionality and more.',
-                               aliases=['about', 'doc'])
+        self.__install_command(
+            self.reroll,
+            'Reroll',
+            'reroll',
+            'Change your color to a random color.',
+            aliases=['newcolor'],
+        )
+        self.__install_command(
+            self.join, 'Join', 'join', 'Move to another room, e.g. /join games.', aliases=['j']
+        )
+        self.__install_command(
+            self.rooms,
+            'Rooms',
+            'rooms',
+            'List the active rooms and their member counts.',
+            aliases=['channels'],
+        )
+        self.__install_command(
+            self.help,
+            'Help',
+            'help',
+            'Get info on a given commands functionality and more.',
+            aliases=['about', 'doc'],
+        )
 
-    def __install_command(self, func: Callable, name: Optional[str] = None,
-                          command_name: Optional[str] = None, description: str = '',
-                          aliases: Optional[List[str]] = None):
+    def __install_command(
+        self,
+        func: Callable,
+        name: Optional[str] = None,
+        command_name: Optional[str] = None,
+        description: str = '',
+        aliases: Optional[List[str]] = None,
+    ):
         if aliases is None:
             aliases = []
 
@@ -51,7 +72,7 @@ class CommandHandler:
             'command': command_name,
             'name': name or func.__name__,
             'description': description,
-            'aliases': aliases
+            'aliases': aliases,
         }
 
     def process(self, arguments: List[str]) -> Optional[str]:
@@ -62,7 +83,9 @@ class CommandHandler:
         :return: A optional simple return message. The command can also issue messages itself, but this is the quicker method.
         """
         if len(arguments) == 0:
-            logger.error('CommandHandler.process() was called with zero arguments (no command given)')
+            logger.error(
+                'CommandHandler.process() was called with zero arguments (no command given)'
+            )
             return 'Error while processing command.'
         else:
             try:
@@ -76,7 +99,10 @@ class CommandHandler:
                 else:
                     return f'Command "{arguments[0]}" does not exist.'
             except Exception as e:
-                logger.error(f'Could not process client {self.client.nickname}\'s command request.', exc_info=e)
+                logger.error(
+                    f'Could not process client {self.client.nickname}\'s command request.',
+                    exc_info=e,
+                )
                 return 'A fatal error occurred while trying to process this command.'
 
     def reroll(self, minimum_contrast: float = constants.MINIMUM_CONTRAST) -> str:

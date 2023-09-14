@@ -38,9 +38,12 @@ def boot_server(monkeypatch):
             monkeypatch.setattr(constants, 'TLS_CERT', cert)
             monkeypatch.setattr(constants, 'TLS_KEY', key)
         from server.main import serve
+
         thread = threading.Thread(
-            target=serve, kwargs={'host': '127.0.0.1', 'port': port, 'use_tls': use_tls},
-            daemon=True)
+            target=serve,
+            kwargs={'host': '127.0.0.1', 'port': port, 'use_tls': use_tls},
+            daemon=True,
+        )
         thread.start()
         _wait_until_listening('127.0.0.1', port)
         return thread
@@ -56,8 +59,23 @@ def self_signed(tmp_path):
         pytest.skip('openssl is not available to generate a test certificate')
     cert, key = tmp_path / 'cert.pem', tmp_path / 'key.pem'
     subprocess.run(
-        [openssl, 'req', '-x509', '-newkey', 'rsa:2048', '-nodes',
-         '-keyout', str(key), '-out', str(cert), '-days', '1', '-subj', '/CN=localhost'],
-        check=True, capture_output=True,
+        [
+            openssl,
+            'req',
+            '-x509',
+            '-newkey',
+            'rsa:2048',
+            '-nodes',
+            '-keyout',
+            str(key),
+            '-out',
+            str(cert),
+            '-days',
+            '1',
+            '-subj',
+            '/CN=localhost',
+        ],
+        check=True,
+        capture_output=True,
     )
     return str(cert), str(key)

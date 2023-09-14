@@ -16,9 +16,24 @@ def self_signed(tmp_path):
         pytest.skip('openssl is not available to generate a test certificate')
     cert, key = tmp_path / 'cert.pem', tmp_path / 'key.pem'
     subprocess.run(
-        [openssl, 'req', '-x509', '-newkey', 'rsa:2048', '-nodes',
-         '-keyout', str(key), '-out', str(cert), '-days', '1', '-subj', '/CN=localhost'],
-        check=True, capture_output=True,
+        [
+            openssl,
+            'req',
+            '-x509',
+            '-newkey',
+            'rsa:2048',
+            '-nodes',
+            '-keyout',
+            str(key),
+            '-out',
+            str(cert),
+            '-days',
+            '1',
+            '-subj',
+            '/CN=localhost',
+        ],
+        check=True,
+        capture_output=True,
     )
     return str(cert), str(key)
 
@@ -47,7 +62,8 @@ def test_tls_round_trip_over_protocol_framing(self_signed):
     server_thread.start()
     try:
         client = client_ctx.wrap_socket(
-            socket.socket(socket.AF_INET, socket.SOCK_STREAM), server_hostname='localhost')
+            socket.socket(socket.AF_INET, socket.SOCK_STREAM), server_hostname='localhost'
+        )
         client.connect((host, port))
         client.sendall(protocol.encode({'type': 'MESSAGE', 'content': 'ping'}))
         reply = protocol.read_message(client)

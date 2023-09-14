@@ -10,6 +10,7 @@ from typing import Any, Callable, List, Optional
 from shared import constants
 from shared import helpers
 from shared import protocol
+
 # noinspection PyUnresolvedReferences
 from shared.exceptions import DataReceptionException, StopException
 from server import db
@@ -23,8 +24,19 @@ logger = logging.getLogger('handler')
 class BaseClient(object):
     """A simple base class for the client containing basic client communication methods."""
 
-    def __init__(self, conn: socket.socket, all_clients: List['BaseClient'], address, stop_flag: Callable[[], bool]) -> None:
-        self.conn, self.all_clients, self.address, self.stop_flag = conn, all_clients, address, stop_flag
+    def __init__(
+        self,
+        conn: socket.socket,
+        all_clients: List['BaseClient'],
+        address,
+        stop_flag: Callable[[], bool],
+    ) -> None:
+        self.conn, self.all_clients, self.address, self.stop_flag = (
+            conn,
+            all_clients,
+            address,
+            stop_flag,
+        )
         self.db: Optional[db.ServerDatabase] = None
 
         self.conn.settimeout(0.5)
@@ -66,24 +78,37 @@ class BaseClient(object):
 
     def send_message(self, message: str) -> None:
         """Sends a string message as the server to this client."""
-        self.conn.send(helpers.prepare_message(
+        self.conn.send(
+            helpers.prepare_message(
                 nickname='Server', message=message, color=constants.Colors.BLACK.hex, message_id=-1
-        ))
+            )
+        )
 
     def broadcast_message(self, message: str) -> None:
         """Sends a string message to all connected clients as the Server."""
         assert self.db is not None, 'broadcast_message runs after the database is connected'
         timestamp = int(time.time())
-        message_id = self.db.add_message('Server', 'server', constants.Colors.BLACK.hex, message, timestamp)
-        prepared = helpers.prepare_message(
-                nickname='Server', message=message, color=constants.Colors.BLACK.hex, message_id=message_id,
-                timestamp=timestamp
+        message_id = self.db.add_message(
+            'Server', 'server', constants.Colors.BLACK.hex, message, timestamp
         )
-        self._fan_out(rooms.members_in(self.all_clients, getattr(self, 'room', constants.DEFAULT_ROOM)), prepared)
+        prepared = helpers.prepare_message(
+            nickname='Server',
+            message=message,
+            color=constants.Colors.BLACK.hex,
+            message_id=message_id,
+            timestamp=timestamp,
+        )
+        self._fan_out(
+            rooms.members_in(self.all_clients, getattr(self, 'room', constants.DEFAULT_ROOM)),
+            prepared,
+        )
 
     def broadcast(self, message: bytes) -> None:
         """Sends a pre-encoded message to all clients in the sender's room"""
-        self._fan_out(rooms.members_in(self.all_clients, getattr(self, 'room', constants.DEFAULT_ROOM)), message)
+        self._fan_out(
+            rooms.members_in(self.all_clients, getattr(self, 'room', constants.DEFAULT_ROOM)),
+            message,
+        )
 
     def __repr__(self) -> str:
         return f'BaseClient({self.address})'
@@ -96,14 +121,22 @@ class Client(BaseClient):
     Client.run() should be ran in a thread alongside the other clients.
     """
 
-    def __init__(self, conn: socket.socket, address: Any, all_clients: List['BaseClient'], stop_flag: Callable[[], bool]):
+    def __init__(
+        self,
+        conn: socket.socket,
+        address: Any,
+        all_clients: List['BaseClient'],
+        stop_flag: Callable[[], bool],
+    ):
         super().__init__(conn, all_clients, address, stop_flag)
 
         self.id = str(uuid.uuid4())
         self.short_id = self.id[:8]
         self.nickname = self.id[:8]
         self.room = constants.DEFAULT_ROOM
-        self.color: constants.Color = random.choice(constants.Colors.has_contrast(float(constants.MINIMUM_CONTRAST)))
+        self.color: constants.Color = random.choice(
+            constants.Colors.has_contrast(float(constants.MINIMUM_CONTRAST))
+        )
 
         self.command = CommandHandler(self)
         self.first_seen = time.time()
@@ -130,10 +163,12 @@ class Client(BaseClient):
         """Encode the USER_LIST of everyone currently in `room`."""
         mates = rooms.members_in(self.all_clients, room)
         return helpers.prepare_json(
-                {
-                    'type': constants.Types.USER_LIST,
-                    'users': [{'nickname': other.nickname, 'color': other.color.hex} for other in mates]
-                }
+            {
+                'type': constants.Types.USER_LIST,
+                'users': [
+                    {'nickname': other.nickname, 'color': other.color.hex} for other in mates
+                ],
+            }
         )
 
     def send_connections_list(self) -> None:
@@ -153,12 +188,14 @@ class Client(BaseClient):
         with db.lock:
             cur = self.db.conn.cursor()
             try:
-                cur.execute('''SELECT id, nickname, color, message, timestamp
+                cur.execute(
+                    '''SELECT id, nickname, color, message, timestamp
                                 FROM message
                                 WHERE timestamp >= ?
                                 ORDER BY timestamp
                                 LIMIT ?''',
-                            [min_time, limit])
+                    [min_time, limit],
+                )
 
                 messages = cur.fetchall()
                 self.send(helpers.prepare_message_history(messages))
@@ -273,7 +310,7 @@ class Client(BaseClient):
                 if data['type'] == constants.Types.REQUEST:
                     if data['request'] == constants.Requests.GET_MESSAGE_HISTORY:
                         self.send_message_history(
-                                limit=data.get('limit', 50), time_limit=data.get('time_limit', 60 * 30)
+                            limit=data.get('limit', 50), time_limit=data.get('time_limit', 60 * 30)
                         )
 
                 elif data['type'] == constants.Types.PONG:
@@ -287,15 +324,18 @@ class Client(BaseClient):
                 elif data['type'] == constants.Types.MESSAGE:
                     # Record the message in the DB.
                     assert self.db is not None  # connected at the top of handle()
-                    message_id = self.db.add_message(self.nickname, self.id, self.color.hex, data['content'],
-                                                     int(time.time()))
+                    message_id = self.db.add_message(
+                        self.nickname, self.id, self.color.hex, data['content'], int(time.time())
+                    )
 
-                    self.broadcast(helpers.prepare_message(
+                    self.broadcast(
+                        helpers.prepare_message(
                             nickname=self.nickname,
                             message=data['content'],
                             color=self.color.hex,
-                            message_id=message_id
-                    ))
+                            message_id=message_id,
+                        )
+                    )
 
                     # Process commands
                     if data['content'].strip().startswith('/'):

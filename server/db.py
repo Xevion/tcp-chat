@@ -47,7 +47,8 @@ class ClientDatabase(Database):
         super().__init__(database)
 
     def construct(self) -> None:
-        self.conn.execute('''CREATE TABLE IF NOT EXISTS connection
+        self.conn.execute(
+            '''CREATE TABLE IF NOT EXISTS connection
                             (id INTEGER PRIMARY KEY,
                             address TEXT NOT NULL,
                             port INTEGER NOT NULL,
@@ -56,25 +57,35 @@ class ClientDatabase(Database):
                             connections INTEGER DEFAULT 1,
                             favorite BOOLEAN DEFAULT FALSE,
                             initial_time TIMESTAMP NOT NULL,
-                            latest_time TIMESTAMP NOT NULL);''')
+                            latest_time TIMESTAMP NOT NULL);'''
+        )
 
-    def remember_connection(self, address: str, port: int, nickname: str,
-                            password: Optional[str] = None) -> None:
+    def remember_connection(
+        self, address: str, port: int, nickname: str, password: Optional[str] = None
+    ) -> None:
         """Record a successful connection, bumping its use count if already known."""
         now = datetime.datetime.now()
         with lock:
             with self.conn:
                 cur = self.conn.cursor()
                 try:
-                    cur.execute('SELECT id FROM connection WHERE address = ? AND port = ? AND nickname = ?',
-                                [address, port, nickname])
+                    cur.execute(
+                        'SELECT id FROM connection WHERE address = ? AND port = ? AND nickname = ?',
+                        [address, port, nickname],
+                    )
                     row = cur.fetchone()
                     if row is None:
-                        cur.execute('''INSERT INTO connection (address, port, nickname, password, initial_time, latest_time)
-                                    VALUES (?, ?, ?, ?, ?, ?)''', [address, port, nickname, password, now, now])
+                        cur.execute(
+                            '''INSERT INTO connection (address, port, nickname, password, initial_time, latest_time)
+                                    VALUES (?, ?, ?, ?, ?, ?)''',
+                            [address, port, nickname, password, now, now],
+                        )
                     else:
-                        cur.execute('UPDATE connection SET connections = connections + 1, latest_time = ?, password = ? '
-                                    'WHERE id = ?', [now, password, row[0]])
+                        cur.execute(
+                            'UPDATE connection SET connections = connections + 1, latest_time = ?, password = ? '
+                            'WHERE id = ?',
+                            [now, password, row[0]],
+                        )
                 finally:
                     cur.close()
 
@@ -83,8 +94,10 @@ class ClientDatabase(Database):
         with lock:
             cur = self.conn.cursor()
             try:
-                cur.execute('''SELECT address, port, nickname, password, favorite FROM connection
-                            ORDER BY latest_time DESC LIMIT 1''')
+                cur.execute(
+                    '''SELECT address, port, nickname, password, favorite FROM connection
+                            ORDER BY latest_time DESC LIMIT 1'''
+                )
                 row = cur.fetchone()
             finally:
                 cur.close()
@@ -95,8 +108,11 @@ class ClientDatabase(Database):
         with lock:
             cur = self.conn.cursor()
             try:
-                cur.execute('''SELECT address, port, nickname, password, favorite FROM connection
-                            ORDER BY latest_time DESC LIMIT ?''', [limit])
+                cur.execute(
+                    '''SELECT address, port, nickname, password, favorite FROM connection
+                            ORDER BY latest_time DESC LIMIT ?''',
+                    [limit],
+                )
                 rows = cur.fetchall()
             finally:
                 cur.close()
@@ -107,8 +123,10 @@ class ClientDatabase(Database):
         with lock:
             cur = self.conn.cursor()
             try:
-                cur.execute('''SELECT address, port, nickname, password, favorite FROM connection
-                            WHERE favorite = 1 ORDER BY latest_time DESC''')
+                cur.execute(
+                    '''SELECT address, port, nickname, password, favorite FROM connection
+                            WHERE favorite = 1 ORDER BY latest_time DESC'''
+                )
                 rows = cur.fetchall()
             finally:
                 cur.close()
@@ -118,15 +136,22 @@ class ClientDatabase(Database):
         """Flag or unflag a stored connection as a favorite."""
         with lock:
             with self.conn:
-                self.conn.execute('UPDATE connection SET favorite = ? '
-                                  'WHERE address = ? AND port = ? AND nickname = ?',
-                                  [1 if favorite else 0, address, port, nickname])
+                self.conn.execute(
+                    'UPDATE connection SET favorite = ? '
+                    'WHERE address = ? AND port = ? AND nickname = ?',
+                    [1 if favorite else 0, address, port, nickname],
+                )
 
     @staticmethod
     def _as_connection(row) -> dict:
         """Turn a (address, port, nickname, password, favorite) row into a dict."""
-        return {'address': row[0], 'port': row[1], 'nickname': row[2],
-                'password': row[3], 'favorite': bool(row[4])}
+        return {
+            'address': row[0],
+            'port': row[1],
+            'nickname': row[2],
+            'password': row[3],
+            'favorite': bool(row[4]),
+        }
 
 
 class ServerDatabase(Database):
@@ -134,15 +159,19 @@ class ServerDatabase(Database):
         super().__init__(constants.SERVER_DATABASE)
 
     def construct(self):
-        self.conn.execute('''CREATE TABLE IF NOT EXISTS message
+        self.conn.execute(
+            '''CREATE TABLE IF NOT EXISTS message
                             (id INTEGER PRIMARY KEY,
                             nickname TEXT NOT NULL,
                             connection_hash TEXT NOT NULL,
                             color TEXT DEFAULT '#000000',
                             message TEXT DEFAULT '',
-                            timestamp INTEGER NOT NULL)''')
+                            timestamp INTEGER NOT NULL)'''
+        )
 
-    def add_message(self, nickname: str, user_hash: str, color: str, message: str, timestamp: int) -> int:
+    def add_message(
+        self, nickname: str, user_hash: str, color: str, message: str, timestamp: int
+    ) -> int:
         """
         Insert a message into the database. Returns the message ID.
 
@@ -157,8 +186,11 @@ class ServerDatabase(Database):
             with self.conn:
                 cur = self.conn.cursor()
                 try:
-                    cur.execute('''INSERT INTO message (nickname, connection_hash, color, message, timestamp)
-                                VALUES (?, ?, ?, ?, ?)''', [nickname, user_hash, color, message, timestamp])
+                    cur.execute(
+                        '''INSERT INTO message (nickname, connection_hash, color, message, timestamp)
+                                VALUES (?, ?, ?, ?, ?)''',
+                        [nickname, user_hash, color, message, timestamp],
+                    )
                     message_id = cur.lastrowid
                     assert message_id is not None  # always set right after an INSERT
                     logger.debug(f'Message #{message_id} recorded.')

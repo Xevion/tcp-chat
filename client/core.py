@@ -25,9 +25,9 @@ from shared.backoff import backoff_delays
 logger = logging.getLogger('core')
 
 # Domain event types yielded by ClientCore.events().
-MESSAGE = 'message'        # payload: {nickname, message, color, time, id}
-USER_LIST = 'user_list'    # payload: {users: [...]}
-STATS = 'stats'            # payload: {sent: int, received: int} -- running byte totals
+MESSAGE = 'message'  # payload: {nickname, message, color, time, id}
+USER_LIST = 'user_list'  # payload: {users: [...]}
+STATS = 'stats'  # payload: {sent: int, received: int} -- running byte totals
 DISCONNECTED = 'disconnected'  # payload: {error: Exception|None}; terminates the stream
 
 
@@ -43,9 +43,16 @@ class ConnectResult(NamedTuple):
     permanent: bool = False  # True when the server stated a refusal, so retrying is pointless
 
 
-def open_connection(host: str, port: int, use_tls: bool = False, verify: bool = False,
-                    version: int = protocol.PROTOCOL_VERSION, server_hostname: Optional[str] = None,
-                    timeout: Optional[float] = None, is_probe: bool = False) -> ConnectResult:
+def open_connection(
+    host: str,
+    port: int,
+    use_tls: bool = False,
+    verify: bool = False,
+    version: int = protocol.PROTOCOL_VERSION,
+    server_hostname: Optional[str] = None,
+    timeout: Optional[float] = None,
+    is_probe: bool = False,
+) -> ConnectResult:
     """Open a socket and run the client handshake, the one true 'connect' path.
 
     A real connection and a reachability probe both go through here, so the probe
@@ -65,8 +72,14 @@ def open_connection(host: str, port: int, use_tls: bool = False, verify: bool = 
 
     handshake_timeout = timeout if timeout is not None else handshake.HANDSHAKE_TIMEOUT
     result = handshake.negotiate_client(
-        sock, want_tls=use_tls, version=version, verify=verify,
-        server_hostname=server_hostname or host, timeout=handshake_timeout, is_probe=is_probe)
+        sock,
+        want_tls=use_tls,
+        version=version,
+        verify=verify,
+        server_hostname=server_hostname or host,
+        timeout=handshake_timeout,
+        is_probe=is_probe,
+    )
     if not result.ok:
         try:
             sock.close()
@@ -84,15 +97,17 @@ class ProbeResult(NamedTuple):
     detail: str
 
 
-def probe(host: str, port: int, use_tls: bool = False, verify: bool = False,
-          timeout: float = 3.0) -> ProbeResult:
+def probe(
+    host: str, port: int, use_tls: bool = False, verify: bool = False, timeout: float = 3.0
+) -> ProbeResult:
     """Check whether a real connection would succeed, then drop it. Never raises.
 
     This is a connect dry-run: it runs the same handshake a client would, so a
     version or TLS mismatch is reported here exactly as it would be on connect.
     """
-    result = open_connection(host, port, use_tls=use_tls, verify=verify,
-                             timeout=timeout, is_probe=True)
+    result = open_connection(
+        host, port, use_tls=use_tls, verify=verify, timeout=timeout, is_probe=True
+    )
     if result.sock is not None:
         try:
             result.sock.close()
@@ -106,8 +121,15 @@ def probe(host: str, port: int, use_tls: bool = False, verify: bool = False,
 class ClientCore:
     """Owns the connection to one server for the lifetime of a chat session."""
 
-    def __init__(self, host: str, port: int, nickname: str, use_tls: bool = False,
-                 verify: bool = constants.TLS_VERIFY, version: int = protocol.PROTOCOL_VERSION):
+    def __init__(
+        self,
+        host: str,
+        port: int,
+        nickname: str,
+        use_tls: bool = False,
+        verify: bool = constants.TLS_VERIFY,
+        version: int = protocol.PROTOCOL_VERSION,
+    ):
         self.host, self.port, self.nickname = host, port, nickname
         self.use_tls, self.verify, self.version = use_tls, verify, version
         self.sock: Optional[socket.socket] = None
@@ -119,9 +141,14 @@ class ClientCore:
 
     def connect(self) -> ConnectResult:
         """(Re)open the connection, recording why it failed for the caller to act on."""
-        result = open_connection(self.host, self.port, use_tls=self.use_tls,
-                                 verify=self.verify, version=self.version,
-                                 server_hostname=self.host)
+        result = open_connection(
+            self.host,
+            self.port,
+            use_tls=self.use_tls,
+            verify=self.verify,
+            version=self.version,
+            server_hostname=self.host,
+        )
         if result.ok:
             self.sock = result.sock
             self.reason, self.permanent = '', False
@@ -158,8 +185,11 @@ class ClientCore:
         kind = message['type']
         if kind == constants.Types.REQUEST:
             if message['request'] == constants.Requests.REQUEST_NICK:
-                self._send(helpers.prepare_json(
-                    {'type': constants.Types.NICKNAME, 'nickname': self.nickname}))
+                self._send(
+                    helpers.prepare_json(
+                        {'type': constants.Types.NICKNAME, 'nickname': self.nickname}
+                    )
+                )
         elif kind == constants.Types.PING:
             self._send(helpers.prepare_pong())
         elif kind == constants.Types.MESSAGE:
@@ -179,8 +209,7 @@ class ClientCore:
         """Send a chat message (or slash command) to the server."""
         text = text.strip()
         if text:
-            self._send(helpers.prepare_json(
-                {'type': constants.Types.MESSAGE, 'content': text}))
+            self._send(helpers.prepare_json({'type': constants.Types.MESSAGE, 'content': text}))
 
     def send_quit(self) -> None:
         """Tell the server we are leaving; safe to call on a dead socket."""

@@ -10,7 +10,10 @@ def test_remember_connection_stores_and_returns_latest():
     db = ClientDatabase(':memory:')
     db.remember_connection('1.2.3.4', 5555, 'alice', 'secret')
     assert db.last_connection() == {
-        'address': '1.2.3.4', 'port': 5555, 'nickname': 'alice', 'password': 'secret',
+        'address': '1.2.3.4',
+        'port': 5555,
+        'nickname': 'alice',
+        'password': 'secret',
         'favorite': False,
     }
 

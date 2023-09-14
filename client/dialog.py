@@ -13,6 +13,7 @@ from client.nickname import Ui_NicknameDialog
 
 class ProbeWorker(QThread):
     """Run a reachability probe off the UI thread and report the outcome."""
+
     result = pyqtSignal(bool, str)
 
     def __init__(self, host: str, port: int, use_tls: bool, parent=None):
@@ -25,7 +26,6 @@ class ProbeWorker(QThread):
 
 
 class NicknameDialog(QDialog, Ui_NicknameDialog):
-
     def __init__(self, *args, **kwargs):
         super(NicknameDialog, self).__init__(*args, **kwargs)
         self.setupUi(self)
@@ -57,9 +57,16 @@ class NicknameDialog(QDialog, Ui_NicknameDialog):
 
 
 class ConnectionDialog(QDialog, Ui_ConnectionDialog):
-    def __init__(self, nickname: Optional[str] = None, host: Optional[str] = None,
-                 port: Optional[int] = None, use_tls: bool = False,
-                 db: Optional[ClientDatabase] = None, *args, **kwargs):
+    def __init__(
+        self,
+        nickname: Optional[str] = None,
+        host: Optional[str] = None,
+        port: Optional[int] = None,
+        use_tls: bool = False,
+        db: Optional[ClientDatabase] = None,
+        *args,
+        **kwargs,
+    ):
         super(ConnectionDialog, self).__init__(*args, **kwargs)
         self.setupUi(self)
 
@@ -111,8 +118,9 @@ class ConnectionDialog(QDialog, Ui_ConnectionDialog):
         self.connect_pressed = True
         settings = self.settings
         if settings.remember:
-            self.db.remember_connection(settings.ip, settings.port, settings.nickname,
-                                        settings.password or None)
+            self.db.remember_connection(
+                settings.ip, settings.port, settings.nickname, settings.password or None
+            )
         else:
             self.db.remember_connection(settings.ip, settings.port, settings.nickname)
         self.close()
@@ -150,8 +158,9 @@ class ConnectionDialog(QDialog, Ui_ConnectionDialog):
         menu = QMenu(self)
         action = menu.addAction('Remove favorite' if conn['favorite'] else 'Add favorite')
         if menu.exec_(self.recent_connections_list.mapToGlobal(point)) == action:
-            self.db.set_favorite(conn['address'], conn['port'], conn['nickname'],
-                                 favorite=not conn['favorite'])
+            self.db.set_favorite(
+                conn['address'], conn['port'], conn['nickname'], favorite=not conn['favorite']
+            )
             self.load_connection_lists()
 
     def test_connection(self) -> None:
@@ -180,12 +189,14 @@ class ConnectionDialog(QDialog, Ui_ConnectionDialog):
 
     @property
     def settings(self) -> ConnectionOptions:
-        return ConnectionOptions(ip=self.server_address_input.text() or DEFAULT_IP,
-                                 port=int(self.port_input.text() or DEFAULT_PORT),
-                                 nickname=self.nickname_input.text(),
-                                 password=self.password_input.text(),
-                                 remember=self.remember_checkbox.checkState(),
-                                 tls=self.tls_checkbox.isChecked())
+        return ConnectionOptions(
+            ip=self.server_address_input.text() or DEFAULT_IP,
+            port=int(self.port_input.text() or DEFAULT_PORT),
+            nickname=self.nickname_input.text(),
+            password=self.password_input.text(),
+            remember=self.remember_checkbox.checkState(),
+            tls=self.tls_checkbox.isChecked(),
+        )
 
     def validation(self, full: bool = True) -> None:
         address, port = self.validate_address()
@@ -198,7 +209,9 @@ class ConnectionDialog(QDialog, Ui_ConnectionDialog):
         elif not port:
             self.status_bar.showMessage('Please fill in a valid port number.', 3000)
         elif full and not nickname:
-            self.status_bar.showMessage('Please use a valid nickname. Letters and digits, 3-15 characters long.', 3000)
+            self.status_bar.showMessage(
+                'Please use a valid nickname. Letters and digits, 3-15 characters long.', 3000
+            )
 
         self.connect_button.setDisabled(not (address and port and nickname))
         self.test_connection_button.setDisabled(not (address and port))
@@ -212,8 +225,14 @@ class ConnectionDialog(QDialog, Ui_ConnectionDialog):
         address = self.server_address_input.text() or DEFAULT_IP
         port = self.port_input.text() or str(DEFAULT_PORT)
 
-        valid_address = len(address) > 0 and re.match(r'^\d{1,4}\.\d{1,4}\.\d{1,4}\.\d{1,4}|localhost$',
-                                                      address) is not None
-        valid_port = len(port) > 0 and re.match(r'^\d{4,5}$', port) is not None and 1024 <= int(port) <= 65536
+        valid_address = (
+            len(address) > 0
+            and re.match(r'^\d{1,4}\.\d{1,4}\.\d{1,4}\.\d{1,4}|localhost$', address) is not None
+        )
+        valid_port = (
+            len(port) > 0
+            and re.match(r'^\d{4,5}$', port) is not None
+            and 1024 <= int(port) <= 65536
+        )
 
         return valid_address, valid_port

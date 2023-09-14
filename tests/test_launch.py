@@ -2,7 +2,9 @@ import launch
 
 
 def test_server_arguments_parse():
-    args = launch.build_parser().parse_args(['server', '--host', '0.0.0.0', '--port', '6000', '--tls'])
+    args = launch.build_parser().parse_args(
+        ['server', '--host', '0.0.0.0', '--port', '6000', '--tls']
+    )
     assert args.role in ('server', 's', '2')
     assert args.host == '0.0.0.0'
     assert args.port == 6000
@@ -23,5 +25,6 @@ def test_tls_is_none_when_not_passed():
 
 def test_a_role_is_required():
     import pytest
+
     with pytest.raises(SystemExit):
         launch.build_parser().parse_args([])

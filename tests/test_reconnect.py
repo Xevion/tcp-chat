@@ -45,8 +45,7 @@ def _bare_window(core):
 
 def test_repeated_losses_back_off_instead_of_hot_looping(monkeypatch):
     scheduled = []
-    monkeypatch.setattr(gui.QTimer, 'singleShot',
-                        staticmethod(lambda ms, fn: scheduled.append(ms)))
+    monkeypatch.setattr(gui.QTimer, 'singleShot', staticmethod(lambda ms, fn: scheduled.append(ms)))
     window = _bare_window(_FakeCore())
 
     # Three drops in a row, before any reconnect can prove itself stable.
@@ -69,8 +68,7 @@ def test_a_stable_connection_resets_the_backoff():
 
 def test_a_permanent_rejection_stops_reconnecting(monkeypatch):
     scheduled = []
-    monkeypatch.setattr(gui.QTimer, 'singleShot',
-                        staticmethod(lambda ms, fn: scheduled.append(ms)))
+    monkeypatch.setattr(gui.QTimer, 'singleShot', staticmethod(lambda ms, fn: scheduled.append(ms)))
     core = _FakeCore(result=ConnectResult(False, None, 'server requires TLS', permanent=True))
     window = _bare_window(core)
 
@@ -80,8 +78,7 @@ def test_a_permanent_rejection_stops_reconnecting(monkeypatch):
 
 def test_a_transient_failure_keeps_retrying(monkeypatch):
     scheduled = []
-    monkeypatch.setattr(gui.QTimer, 'singleShot',
-                        staticmethod(lambda ms, fn: scheduled.append(ms)))
+    monkeypatch.setattr(gui.QTimer, 'singleShot', staticmethod(lambda ms, fn: scheduled.append(ms)))
     core = _FakeCore(result=ConnectResult(False, None, 'connection refused', permanent=False))
     window = _bare_window(core)
 

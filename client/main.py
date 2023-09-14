@@ -10,8 +10,12 @@ from client import theme
 logger = logging.getLogger(__name__)
 
 
-def main(nickname: Optional[str] = None, host: Optional[str] = None,
-         port: Optional[int] = None, use_tls: Optional[bool] = None):
+def main(
+    nickname: Optional[str] = None,
+    host: Optional[str] = None,
+    port: Optional[int] = None,
+    use_tls: Optional[bool] = None,
+):
     app = QApplication([])
     app.setApplicationName("TCPChat Client")
     app.setStyleSheet(theme.DARK_STYLESHEET)
@@ -30,7 +34,12 @@ def main(nickname: Optional[str] = None, host: Optional[str] = None,
         except ConnectionError as e:
             QMessageBox.warning(None, 'Connection failed', str(e))
             # Re-open the dialog prefilled with what they just tried.
-            nickname, host, port, use_tls = settings.nickname, settings.ip, settings.port, settings.tls
+            nickname, host, port, use_tls = (
+                settings.nickname,
+                settings.ip,
+                settings.port,
+                settings.tls,
+            )
             continue
 
         app.exec_()

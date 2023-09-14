@@ -16,8 +16,9 @@ def prepare_json(obj: Any) -> bytes:
     return protocol.encode(obj)
 
 
-def prepare_message(nickname: str, message: str, color: str, message_id: int,
-                    timestamp: Optional[int] = None) -> bytes:
+def prepare_message(
+    nickname: str, message: str, color: str, message_id: int, timestamp: Optional[int] = None
+) -> bytes:
     return prepare_json(
         {
             'type': constants.Types.MESSAGE,
@@ -42,9 +43,10 @@ def prepare_message_history(messages: List[Tuple[int, str, str, str, int]]) -> b
                     'content': message,
                     'color': color,
                     'time': timestamp,
-                    'id': message_id
-                } for message_id, nickname, color, message, timestamp in messages
-            ]
+                    'id': message_id,
+                }
+                for message_id, nickname, color, message, timestamp in messages
+            ],
         }
     )
 
@@ -74,8 +76,10 @@ def formatted_message(message: dict) -> str:
     nick_esc = html.escape(message["nickname"])
     msg_esc = html.escape(message["message"])
     stamp = time.strftime('%H:%M', time.localtime(message["time"]))
-    return f'<span style="color: gray">[{stamp}]</span> ' \
-           f'&lt;<span style="color: {message["color"]}">{nick_esc}</span>&gt; {msg_esc}'
+    return (
+        f'<span style="color: gray">[{stamp}]</span> '
+        f'&lt;<span style="color: {message["color"]}">{nick_esc}</span>&gt; {msg_esc}'
+    )
 
 
 def tail(items, limit):
@@ -83,7 +87,7 @@ def tail(items, limit):
     items = list(items)
     if limit is None or len(items) <= limit:
         return items
-    return items[len(items) - limit:]
+    return items[len(items) - limit :]
 
 
 def sizeof_fmt(num, suffix='B'):
