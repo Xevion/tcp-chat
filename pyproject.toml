@@ -1,0 +1,7 @@
+[tool.black]
+line-length = 100
+target-version = ['py311']
+# Keep the existing single-quote style; only reflow layout.
+skip-string-normalization = true
+# Leave the pyuic5-generated modules alone; they are overwritten from the .ui files.
+extend-exclude = '(client/nickname\.py|client/ui/)'

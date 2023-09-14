@@ -80,6 +80,13 @@ The codebase is type-checked with [mypy](https://mypy-lang.org/) (configured in
 pipenv run mypy
 ```
 
+It is formatted with [Black](https://black.readthedocs.io/) (configured in
+`pyproject.toml`):
+
+```bash
+pipenv run black .
+```
+
 ## Building
 
 ```bash
